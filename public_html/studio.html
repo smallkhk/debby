@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Studio — Eclipse Creator Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body>
+<nav class="nav" id="nav"></nav>
+
+<div class="studio">
+  <aside class="panel">
+    <div class="field">
+      <label>Camera</label>
+      <select id="cameraSelect"><option>Requesting devices…</option></select>
+    </div>
+    <div class="field">
+      <label>Microphone</label>
+      <select id="micSelect"><option>Requesting devices…</option></select>
+    </div>
+    <div class="field">
+      <label>AI model</label>
+      <select id="modelSelect"><option>Loading…</option></select>
+    </div>
+
+    <div class="field">
+      <div class="group-title" style="margin-bottom:10px">Style presets</div>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="field">
+      <label>Prompt</label>
+      <textarea id="promptInput" placeholder="Describe the look… e.g. 'cyberpunk neon city, cinematic lighting'"></textarea>
+      <button class="btn btn-ghost btn-sm" id="applyPrompt" style="align-self:flex-start">Apply prompt</button>
+    </div>
+
+    <div class="meter hidden" id="meter">
+      <div class="meter-row"><span class="muted">Elapsed</span><b id="meterTime">00:00</b></div>
+      <div class="meter-row"><span class="muted">Spent</span><b id="meterCost">0 pts</b></div>
+      <div class="meter-bar"><i id="meterBar" style="width:100%"></i></div>
+      <div class="faint" style="font-size:.76rem">Credit remaining for this session</div>
+    </div>
+
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-primary" id="startBtn">▶ Start live stream</button>
+      <button class="btn btn-danger" id="stopBtn" disabled>■ Stop</button>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <div class="stage-actions">
+      <span class="status" id="status"><span class="dot"></span> <span id="statusText">Idle</span></span>
+      <span class="spacer"></span>
+      <button class="btn btn-ghost btn-sm" id="pipBtn" disabled title="Float over other apps">🖼️ Picture-in-Picture</button>
+      <button class="btn btn-ghost btn-sm" id="obsBtn" disabled title="Clean window for OBS to capture">📡 OBS output</button>
+      <button class="btn btn-ghost btn-sm" id="fsBtn" disabled title="Fullscreen the output">⛶ Fullscreen</button>
+    </div>
+
+    <div class="videos">
+      <div class="video-box">
+        <span class="badge live">● CAMERA</span>
+        <video id="localVideo" autoplay muted playsinline></video>
+        <div class="placeholder" id="localPlaceholder">Your camera preview appears here.</div>
+      </div>
+      <div class="video-box">
+        <span class="badge out">✦ AI OUTPUT</span>
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="placeholder" id="remotePlaceholder">The transformed output appears here — this is the feed to capture in OBS.</div>
+      </div>
+    </div>
+
+    <div class="help">
+      <h4>📡 Stream to OBS, Zoom, Meet or Discord</h4>
+      <ol>
+        <li>Start the stream, then click <strong>OBS output</strong> — a clean window opens with just the AI feed.</li>
+        <li>In OBS add a <code>Window Capture</code> source and select that window.</li>
+        <li>Click <code>Start Virtual Camera</code> in OBS, then pick <strong>OBS Virtual Camera</strong> as your webcam anywhere.</li>
+      </ol>
+    </div>
+  </main>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script type="module" src="/assets/js/studio.js"></script>
+</body>
+</html>

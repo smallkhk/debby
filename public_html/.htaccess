@@ -1,0 +1,56 @@
+# ── Eclipse Creator Studio — Apache / LiteSpeed config (cPanel) ──────────────
+
+DirectoryIndex index.html index.php
+
+# ── Security headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(self), microphone=(self), display-capture=(self)"
+</IfModule>
+
+# ── Never serve the JSON data stores or dotfiles ─────────────────────────────
+# data/ has its own .htaccess too; this is a second line of defence in case a
+# path bug ever exposes a store from somewhere else in the tree.
+<FilesMatch "\.(json|log|md)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+<FilesMatch "^\.">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# ── Force HTTPS ──────────────────────────────────────────────────────────────
+# Browsers block getUserMedia (camera/mic) on plain http, so the Studio simply
+# will not work without this. Enable AutoSSL in cPanel first, then uncomment.
+# RewriteEngine On
+# RewriteCond %{HTTPS} !=on
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# ── Optional: pick ONE canonical domain ──────────────────────────────────────
+# Sessions and device tokens are stored per-domain, so users bouncing between
+# two hostnames get logged out. Uncomment and edit to 301 one to the other.
+# RewriteEngine On
+# RewriteCond %{HTTP_HOST} ^(www\.)?example\.com$ [NC]
+# RewriteRule ^(.*)$ https://example.online/$1 [R=301,L]
+
+# ── Static asset caching ─────────────────────────────────────────────────────
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/svg+xml "access plus 30 days"
+</IfModule>
