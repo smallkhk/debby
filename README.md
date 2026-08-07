@@ -1,65 +1,113 @@
-#### HERMIT MD WHATSAPP BOT
-Hermit-md - Simple whatsapp Multi Device whatsapp bot.
+# Prism Studio
 
-***
+A professional, browser-based front-end for **Decart** real-time video AI (Lucy live editing, restyle, and virtual try-on). Pick a camera and mic, choose a look, and stream AI-transformed video — with **Picture-in-Picture** and an **OBS-ready output** view.
 
-### SETUP
+Built on the official [`@decartai/sdk`](https://github.com/DecartAI/sdk).
 
-1. Scan the QR and copy it
-    <br>
-<a href='https://hermit.adithyan.xyz/qr' target="_blank"><img alt='SCAN QR' src='https://img.shields.io/badge/Scan_qr-100000?style=for-the-badge&logo=scan&logoColor=white&labelColor=black&color=black'/></a>
+> **Security model:** your permanent Decart API key lives **only** on the server. Each browser session receives a short-lived, model-scoped **ephemeral token** (`ek_...`, default 5-minute TTL). The real key is never sent to any browser.
 
-#### DEPLOY TO HEROKU 
+---
 
-1. If You don't have a account in Heroku. Create a account.
-    <br>
-<a href='https://signup.heroku.com/' target="_blank"><img alt='Heroku' src='https://img.shields.io/badge/-Create-black?style=for-the-badge&logo=heroku&logoColor=white'/></a>
+## Features
 
-3. Now Deploy
-    <br>
-<a href='https://hermit.adithyan.xyz/deploy-heroku' target="_blank"><img alt='DEPLOY' src='https://img.shields.io/badge/-DEPLOY-black?style=for-the-badge&logo=heroku&logoColor=white'/></a>
+- 🎥 Real-time restyle & virtual try-on at 720p (Decart Lucy models)
+- 🎙️ Explicit **camera** and **microphone** selection
+- ⚡ Change the style mid-stream (prompt box + one-tap presets)
+- 🖼️ **Picture-in-Picture** — float the AI output over any app
+- 📡 **OBS output** — a clean, chrome-free window built to be captured as a Window Capture / Browser Source, then piped anywhere via OBS Virtual Camera
+- 🔒 Server-side ephemeral tokens, per-IP rate limiting, and an optional access-code gate
 
-#### DEPLOY TO KOYEB 
+---
 
-1. If You don't have a account in koyeb. Create a account.
-    <br>
-<a href='https://app.koyeb.com/auth/signup' target="_blank"><img alt='koyeb' src='https://img.shields.io/badge/-Create-black?style=for-the-badge&logo=koyeb&logoColor=white'/></a>
+## Quick start
 
-3. Get [DATABASE_URL](https://github.com/A-d-i-t-h-y-a-n/hermit-md/wiki/DATABASE_URL) and copy it
+```bash
+# 1. Install
+npm install
 
-4. Get [Koyeb api key](https://app.koyeb.com/account/api)
+# 2. Configure
+cp .env.example .env
+#    then edit .env and set DECART_API_KEY (from https://platform.decart.ai)
 
-2. Now Deploy
-    <br>
-<a href='https://hermit.adithyan.xyz/deploy-koyeb' target="_blank"><img alt='DEPLOY' src='https://img.shields.io/badge/-DEPLOY-black?style=for-the-badge&logo=koyeb&logoColor=white'/></a>
+# 3. Run
+npm start
+#    → http://localhost:3000
+```
 
-#### DEPLOY TO RAILWAY
+Open the landing page at `/`, or jump straight to the app at `/studio`.
 
-1. If You don't have a account in railway. Create a account.
-    <br>
-<a href='https://railway.app/login' target="_blank"><img alt='railway' src='https://img.shields.io/badge/-Create-black?style=for-the-badge&logo=railway&logoColor=white'/></a>
+> Camera access requires a **secure context**. `localhost` works out of the box; for any other host you must serve over **HTTPS** (put it behind a TLS-terminating proxy such as Caddy, Nginx, or a platform like Render/Fly/Railway).
 
-2. Now Deploy
-    <br>
-<a href='https://railway.app/template/q20OfH?referralCode=b9IKyc' target="_blank"><img alt='DEPLOY' src='https://img.shields.io/badge/-DEPLOY-black?style=for-the-badge&logo=railway&logoColor=white'/></a>
+---
 
+## Configuration (`.env`)
 
-***
-<a href="https://chat.whatsapp.com/Czc4zb42smmHIkso3Od0ir"><img alt="WhatsApp" src="https://img.shields.io/badge/-Whatsapp%20Group-blue?style=for-the-badge&logo=whatsapp&logoColor=white"/></a>
+| Variable | Purpose |
+| --- | --- |
+| `DECART_API_KEY` | Your permanent Decart key. Server-only. **Required.** |
+| `PORT` | Port to listen on (default `3000`). |
+| `ALLOWED_MODELS` | Comma-separated models this deployment offers. Tokens are scoped to these. |
+| `TOKEN_TTL_SECONDS` | Lifetime of each ephemeral session token (default `300`). |
+| `RATE_LIMIT_MAX` / `RATE_LIMIT_WINDOW_SECONDS` | Per-IP cap on session mints — protects your spend. |
+| `ACCESS_MODE` | `open` (rate-limited public) or `code` (require an access code). |
+| `ACCESS_CODES` | Comma-separated codes accepted when `ACCESS_MODE=code`. |
 
-## Support Me
+---
 
-If you find this project helpful and would like to support my efforts, you can show your appreciation in three ways:
+## How the pieces fit
 
-1. **Buy Me a Coffee**: Your support will help me stay motivated and continue working on exciting projects like this one.
+```
+Browser (studio.js)                    Server (server/index.js)         Decart
+─────────────────────                  ────────────────────────         ──────
+POST /api/session  ───────────────▶    tokens.create({expiresIn,
+                                          allowedModels})  ───────────▶  mint ek_...
+       ◀───────────  { token: ek_... }  ◀──────────────────────────────
+createDecartClient({ apiKey: ek_... })
+realtime.connect(camStream, …)  ─────────────────────────────────────▶  live WebRTC
+       ◀───────────  transformed video stream (onRemoteStream)  ◀──────
+```
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="https://www.buymeacoffee.com/adithyanr">
-  <img src="https://i.ibb.co/KNnhcvX/bmc-button.png" alt="Buy Me Coffee" height="40" width="150" style="margin-left: 60px;">
-</a>
+The permanent key never leaves the server; the browser only ever holds a short-lived token.
 
+---
 
-2. **Donate USDT (Tether) Crypto**: You can also support me by donating crypto directly to my USDT wallet. Your contribution will go a long way in helping me improve and maintain this project.
+## Stream to OBS, Zoom, Meet, Discord
 
-   Crypto Wallet Address: `0x816a82f51b45e97ffeff60e177ae79f5ae971efb`
+1. In the Studio, **Start** a stream, then click **📡 OBS output** — a clean window opens with only the AI feed.
+2. In OBS, add a **Window Capture** source and select that window.
+3. Click **Start Virtual Camera** in OBS.
+4. In Zoom/Meet/Discord, choose **OBS Virtual Camera** as your webcam.
 
-Your generosity is greatly appreciated!
+(You can also just capture the whole browser tab, or use the **⛶ Fullscreen** button on the output.)
+
+---
+
+## Making it a business
+
+The app is production-shaped, but the pricing tiers on the landing page are **UI only**. To actually charge:
+
+1. **Payments** — wire the pricing buttons to Stripe Checkout or PayPal subscriptions.
+2. **Gate the session endpoint** — on a successful subscription, either:
+   - set `ACCESS_MODE=code` and issue each subscriber a unique access code, **or**
+   - add real user auth and check the customer's plan inside `POST /api/session` before minting a token.
+3. **Meter usage** — track minutes per customer and stop minting tokens once their plan's quota is spent, so your Decart bill can never exceed what you collect.
+4. **Scale the limiter** — the in-memory rate limiter resets per process; move it to Redis if you run more than one instance.
+
+> Use your **own** Decart account and key, and price so your revenue covers your Decart usage. Don't build on credentials you don't own — they can be revoked at any time, taking every paying customer down with them.
+
+---
+
+## Project layout
+
+```
+server/index.js      Express server: token minting, rate limiting, static hosting
+public/index.html    Landing + pricing page
+public/studio.html   The studio app (device pickers, presets, live preview)
+public/output.html   Chrome-free output view for OBS capture
+public/js/studio.js  Studio logic (SDK connect, PiP, OBS, fullscreen)
+public/css/styles.css Design system
+```
+
+## License
+
+MIT
