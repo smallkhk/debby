@@ -1,5 +1,9 @@
 /* ── Eclipse Creator Studio — realtime studio ──────────────────────────────── */
-import { createDecartClient, models } from 'https://esm.sh/@decartai/sdk@0.1.18';
+// The SDK is served from this site, not a CDN. A CDN outage, a corporate
+// firewall or a country-level block would otherwise kill this whole module —
+// and because an ES import failure aborts the script, the page would render
+// with dead dropdowns and no explanation. Keep it local.
+import { createDecartClient, models } from './vendor/decart-sdk.js';
 
 const $ = (id) => document.getElementById(id);
 const cameraSelect = $('cameraSelect');
@@ -62,13 +66,26 @@ function setLiveUI(live) {
 
 // ── Devices ─────────────────────────────────────────────────────────────────
 async function primeDevices() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraSelect.innerHTML = '<option value="">Camera unavailable — needs HTTPS</option>';
+    micSelect.innerHTML = '<option value="">Microphone unavailable — needs HTTPS</option>';
+    startBtn.disabled = true;
+    toast('Your browser blocks camera access on this connection. The site must be served over HTTPS.', true);
+    return;
+  }
+
+  // List first, THEN ask for permission. Blocking on getUserMedia leaves the
+  // dropdowns stuck on "Requesting devices…" for as long as the browser's
+  // permission prompt sits unanswered — which can be forever.
+  await listDevices();
+
   try {
     const prime = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     prime.getTracks().forEach((t) => t.stop());
+    await listDevices();   // re-list: labels are only exposed once permission is granted
   } catch {
-    toast('Allow camera and microphone access to use the Studio.', true);
+    toast('Allow camera and microphone access to pick your devices.', true);
   }
-  await listDevices();
   navigator.mediaDevices.addEventListener('devicechange', listDevices);
 }
 
@@ -299,10 +316,18 @@ window.addEventListener('pagehide', () => {
 });
 
 (async function init() {
-  await mountNav('studio');
-  const user = await requireUser();
-  if (!user) return;
-  buildPresets();
-  await loadModels();
-  await primeDevices();
+  try {
+    await mountNav('studio');
+    const user = await requireUser();
+    if (!user) return;
+    buildPresets();
+    await loadModels();
+    await primeDevices();
+  } catch (err) {
+    // Never leave the panel sitting on "Loading…" with no explanation.
+    console.error('Studio failed to initialise:', err);
+    setStatus('err', 'Studio failed to load');
+    startBtn.disabled = true;
+    toast('The Studio could not start up. Please refresh — if it keeps happening, contact support.', true);
+  }
 })();
