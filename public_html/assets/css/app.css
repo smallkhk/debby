@@ -288,3 +288,34 @@ td.mono, .mono { font-family: var(--mono); font-size: 0.84em; }
   font-weight: 700; background: rgba(124, 92, 255, .16); color: #c4b5fd;
   border: 1px solid rgba(124, 92, 255, .35); align-self: flex-start;
 }
+
+/* ── Top-up packages ──────────────────────────────────────────────────────── */
+.pkg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(126px, 1fr)); gap: 10px; }
+.pkg {
+  position: relative; text-align: center; padding: 16px 10px; border-radius: var(--radius-sm);
+  background: var(--bg-elev-2); border: 1px solid var(--border); cursor: pointer;
+  font-family: var(--font); color: var(--text); transition: border-color .15s, background .15s;
+}
+.pkg:hover { border-color: var(--brand); }
+.pkg.active { border-color: transparent; background:
+  linear-gradient(var(--bg-elev-2), var(--bg-elev-2)) padding-box, var(--grad) border-box;
+  border: 1px solid transparent; }
+.pkg .usdt { font-size: 1.35rem; font-weight: 800; letter-spacing: -.02em; }
+.pkg .cr { font-size: .8rem; color: var(--brand-2); font-family: var(--mono); margin-top: 3px; }
+.pkg .bonus { font-size: .72rem; color: var(--good); margin-top: 4px; font-weight: 600; }
+.pkg .tag {
+  position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+  background: var(--grad); color: #0a0b12; font-size: .64rem; font-weight: 700;
+  padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+}
+.pay-summary {
+  background: var(--bg-elev-2); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm); padding: 13px 15px; margin-bottom: 16px;
+}
+.pay-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.pay-row + .pay-row { margin-top: 6px; }
+.pay-row b { font-family: var(--mono); font-size: 1.02rem; color: var(--brand-2); }
+.pay-bonus { margin-top: 8px; font-size: .78rem; color: var(--good); font-weight: 600; }
+.pkg-edit { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+.pkg-edit input { padding: 9px 11px; font-size: .88rem; }
+@media (max-width: 620px) { .pkg-edit { grid-template-columns: 1fr 1fr; } }

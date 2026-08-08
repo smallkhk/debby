@@ -36,6 +36,7 @@ case 'info': {
         'tronAddress'   => cfg('tronAddress'),
         'pointsPerUsdt' => cfg('pointsPerUsdt'),
         'minUsdt'       => cfg('minUsdt'),
+        'packages'      => array_values(cfg('packages') ?? []),
     ]]);
 }
 
@@ -86,7 +87,7 @@ case 'submit': {
             'error' => 'Could not auto-verify: ' . $result['reason'] . '. Your payment is pending admin review.']);
     }
 
-    $points = (int)floor($result['usdt'] * (float)cfg('pointsPerUsdt'));
+    $points = credits_for_usdt($result['usdt']);
     $payment['status'] = 'approved';
     $payment['usdtVerified'] = $result['usdt'];
     $payment['points'] = $points;
@@ -151,7 +152,7 @@ case 'manual': {
             $txKey = strtolower($p['network'] . ':' . $p['txid']);
             if (in_array($txKey, $s['usedTxids'] ?? [], true)) return ['err' => 'That TXID was already consumed.'];
             $usdt   = $p['usdtVerified'] ?? $p['usdtClaimed'];
-            $points = (int)floor($usdt * (float)cfg('pointsPerUsdt'));
+            $points = credits_for_usdt($usdt);
             $s['payments'][$i]['status'] = 'approved';
             $s['payments'][$i]['points'] = $points;
             $s['payments'][$i]['reason'] = 'Manually approved by admin';

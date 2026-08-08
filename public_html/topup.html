@@ -17,7 +17,22 @@
   <div class="grid grid-2">
     <div>
       <div class="card" style="margin-bottom:18px">
-        <h3 style="margin-bottom:14px">1. Send USDT</h3>
+        <h3 style="margin-bottom:6px">1. Choose a package</h3>
+        <p class="hint" style="margin:0 0 14px">Pick how many credits you want. You'll send the matching amount of USDT.</p>
+        <div class="pkg-grid" id="pkgGrid"></div>
+        <div class="field" style="margin-top:14px;margin-bottom:0">
+          <label for="customUsdt">Or enter your own amount (USDT)</label>
+          <input id="customUsdt" type="number" step="0.01" min="0" placeholder="e.g. 75" />
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px">
+        <h3 style="margin-bottom:14px">2. Send USDT</h3>
+        <div class="pay-summary" id="paySummary">
+          <div class="pay-row"><span class="muted">Send exactly</span><b id="sendAmount">—</b></div>
+          <div class="pay-row"><span class="muted">You receive</span><b id="getCredits">—</b></div>
+          <div class="pay-bonus hidden" id="payBonus"></div>
+        </div>
         <div class="field">
           <label for="network">Network</label>
           <select id="network">
@@ -46,7 +61,7 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-bottom:14px">2. Submit your transaction</h3>
+        <h3 style="margin-bottom:14px">3. Submit your transaction</h3>
         <div id="err"></div>
         <form id="form">
           <div class="field">
@@ -117,6 +132,81 @@ function renderQr(addr) {
   }
 }
 
+
+// ── Packages ────────────────────────────────────────────────────────────────
+// The credit figures shown here mirror credits_for_usdt() on the server, which
+// is the authority. If they ever disagree, the customer is credited what the
+// server decides — so this is presentation only, never the source of truth.
+let chosenUsdt = 0;
+
+function creditsFor(usdt) {
+  if (!info || !usdt) return 0;
+  let bonus = 0;
+  for (const p of (info.packages || [])) {
+    if (p.usdt > 0 && usdt + 0.01 >= p.usdt) bonus = Math.max(bonus, p.bonusPct || 0);
+  }
+  // Same scaling as credits_for_usdt() on the server, so the quoted figure and
+  // the credited figure agree exactly rather than differing by float dust.
+  return Math.floor(usdt * info.pointsPerUsdt * (100 + bonus) / 100 + 1e-9);
+}
+
+function bonusFor(usdt) {
+  if (!info || !usdt) return 0;
+  let bonus = 0;
+  for (const p of (info.packages || [])) {
+    if (p.usdt > 0 && usdt + 0.01 >= p.usdt) bonus = Math.max(bonus, p.bonusPct || 0);
+  }
+  return bonus;
+}
+
+function buildPackages() {
+  const grid = S('pkgGrid');
+  const pkgs = (info.packages || []).filter((p) => p.usdt > 0);
+  if (!pkgs.length) { grid.parentElement.classList.add('hidden'); return; }
+  grid.innerHTML = '';
+  pkgs.forEach((p) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'pkg';
+    b.dataset.usdt = p.usdt;
+    b.innerHTML =
+      (p.tag ? `<span class="tag">${esc(p.tag)}</span>` : '') +
+      `<div class="usdt">$${esc(p.usdt)}</div>` +
+      `<div class="cr">${creditsFor(p.usdt).toLocaleString()} credits</div>` +
+      (p.bonusPct ? `<div class="bonus">+${esc(p.bonusPct)}% bonus</div>` : '');
+    b.addEventListener('click', () => selectAmount(p.usdt, true));
+    grid.appendChild(b);
+  });
+}
+
+function selectAmount(usdt, fromTile) {
+  chosenUsdt = Number(usdt) || 0;
+  document.querySelectorAll('.pkg').forEach((el) =>
+    el.classList.toggle('active', Number(el.dataset.usdt) === chosenUsdt));
+  if (fromTile) S('customUsdt').value = '';
+
+  const credits = creditsFor(chosenUsdt);
+  const bonus = bonusFor(chosenUsdt);
+  S('sendAmount').textContent = chosenUsdt ? `${chosenUsdt} USDT` : '—';
+  S('getCredits').textContent = chosenUsdt ? `${credits.toLocaleString()} credits` : '—';
+  S('payBonus').classList.toggle('hidden', !bonus || !chosenUsdt);
+  if (bonus && chosenUsdt) S('payBonus').textContent = `Includes a ${bonus}% bonus`;
+
+  // Pre-fill step 3 so the customer isn't retyping what they just chose.
+  if (chosenUsdt) S('usdt').value = chosenUsdt;
+
+  if (chosenUsdt && chosenUsdt < info.minUsdt) {
+    S('payBonus').classList.remove('hidden');
+    S('payBonus').textContent = `Below the ${info.minUsdt} USDT minimum — this will be rejected.`;
+  }
+}
+
+S('customUsdt').addEventListener('input', () => {
+  const v = parseFloat(S('customUsdt').value);
+  document.querySelectorAll('.pkg').forEach((el) => el.classList.remove('active'));
+  selectAmount(Number.isFinite(v) ? v : 0, false);
+});
+
 async function loadHistory() {
   try {
     const { payments } = await API.get('/api/payments.php?action=mine');
@@ -169,6 +259,7 @@ S('form').addEventListener('submit', async (e) => {
   if (!(await requireUser())) return;
   const r = await API.get('/api/payments.php?action=info');
   info = r.info;
+  buildPackages();
   renderAddress();
   loadHistory();
 })();

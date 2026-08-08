@@ -71,7 +71,7 @@ case 'save_settings': {
     $incoming = $input['settings'] ?? [];
 
     // Only these keys may be written from the panel.
-    $allowed = ['brandName', 'signupBonus', 'pointsPerUsdt', 'minUsdt', 'bscAddress', 'tronAddress',
+    $allowed = ['brandName', 'signupBonus', 'pointsPerUsdt', 'minUsdt', 'bscAddress', 'tronAddress', 'packages',
         'costs', 'allowedOrigins', 'smtpHost', 'smtpPort', 'smtpUser', 'smtpFrom', 'smtpFromName',
         'smtpSecure', 'notifyAdminEmail', 'notifyOnSignup', 'notifyOnPayment', 'notifyOnLowBalance',
         'lowBalanceThreshold', 'adminUsername'];

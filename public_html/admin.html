@@ -89,6 +89,14 @@
       </div>
 
       <div class="card">
+        <h3 style="margin-bottom:6px">Top-up packages</h3>
+        <p class="hint" style="margin:0 0 14px">What customers pick before paying. The bonus is applied
+        server-side when a payment clears, so the page can't promise more than you actually grant.</p>
+        <div id="pkgRows"></div>
+        <button class="btn btn-ghost btn-sm" id="addPkg" type="button">+ Add package</button>
+      </div>
+
+      <div class="card">
         <h3 style="margin-bottom:16px">Receiving wallets</h3>
         <div class="field"><label for="sBsc">BSC (BEP-20) address</label><input id="sBsc" type="text" /></div>
         <div class="field"><label for="sTron">Tron (TRC-20) address</label><input id="sTron" type="text" /></div>
@@ -242,12 +250,50 @@ async function loadSettings() {
   S('sFrom').value = settings.smtpFrom || '';
   S('sNotify').value = settings.notifyAdminEmail || '';
 
+  renderPackages(settings.packages || []);
+
   S('costsBox').innerHTML = Object.entries(settings.costs).map(([id, c]) => `
     <div class="field">
       <label>${esc(c.label || id)} <span class="faint">(${esc(c.type)})</span></label>
       <input type="number" min="0" data-cost="${esc(id)}" value="${c.type === 'realtime' ? c.perSecond : c.flat}" />
       <span class="hint">${c.type === 'realtime' ? 'credits per second' : 'credits per job'}</span>
     </div>`).join('');
+}
+
+
+function renderPackages(pkgs) {
+  const host = S('pkgRows');
+  host.innerHTML = '';
+  pkgs.forEach((p, i) => host.appendChild(pkgRow(p, i)));
+  if (!pkgs.length) host.innerHTML = '<p class="hint">No packages — customers can still enter a custom amount.</p>';
+}
+
+function pkgRow(p, i) {
+  const row = document.createElement('div');
+  row.className = 'pkg-edit';
+  row.innerHTML =
+    `<input type="number" min="1" step="0.01" data-pk="usdt" value="${esc(p.usdt ?? '')}" placeholder="USDT" />` +
+    `<input type="number" min="0" max="100" data-pk="bonusPct" value="${esc(p.bonusPct ?? 0)}" placeholder="Bonus %" />` +
+    `<input type="text" data-pk="tag" value="${esc(p.tag ?? '')}" placeholder="Tag (optional)" />` +
+    `<button class="btn btn-danger btn-sm" type="button" data-rm="${i}">Remove</button>`;
+  row.querySelector('[data-rm]').addEventListener('click', () => {
+    row.remove();
+    if (!S('pkgRows').children.length) renderPackages([]);
+  });
+  return row;
+}
+
+S('addPkg').addEventListener('click', () => {
+  const host = S('pkgRows');
+  if (host.querySelector('.hint')) host.innerHTML = '';
+  host.appendChild(pkgRow({ usdt: '', bonusPct: 0, tag: '' }, host.children.length));
+});
+
+function collectPackages() {
+  return [...document.querySelectorAll('.pkg-edit')].map((row) => {
+    const get = (k) => row.querySelector(`[data-pk="${k}"]`).value;
+    return { usdt: parseFloat(get('usdt')) || 0, bonusPct: parseFloat(get('bonusPct')) || 0, tag: get('tag').trim() };
+  }).filter((p) => p.usdt > 0).sort((a, b) => a.usdt - b.usdt);
 }
 
 S('saveSettings').addEventListener('click', async () => {
@@ -262,7 +308,7 @@ S('saveSettings').addEventListener('click', async () => {
     allowedOrigins: S('sOrigins').value.split('\n').map((s) => s.trim()).filter(Boolean),
     smtpHost: S('sHost').value.trim(), smtpPort: +S('sPort').value, smtpSecure: S('sSecure').value,
     smtpUser: S('sUser').value.trim(), smtpFrom: S('sFrom').value.trim(),
-    notifyAdminEmail: S('sNotify').value.trim(), costs,
+    notifyAdminEmail: S('sNotify').value.trim(), costs, packages: collectPackages(),
   };
   if (S('sApiKey').value.trim()) payload.decartApiKey = S('sApiKey').value.trim();
   if (S('sPass').value) payload.smtpPass = S('sPass').value;

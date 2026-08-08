@@ -118,6 +118,15 @@ function default_settings() {
         'signupBonus'    => 120,
         'pointsPerUsdt'  => 100,
         'minUsdt'        => 20,
+        // Top-up packages the customer picks before paying. `bonusPct` is extra
+        // credits on top of usdt * pointsPerUsdt; it is applied server-side when
+        // a payment is verified, so what the page advertises is what is granted.
+        'packages' => [
+            ['usdt' => 20,  'bonusPct' => 0,  'tag' => ''],
+            ['usdt' => 50,  'bonusPct' => 5,  'tag' => ''],
+            ['usdt' => 100, 'bonusPct' => 10, 'tag' => 'Best value'],
+            ['usdt' => 250, 'bonusPct' => 15, 'tag' => ''],
+        ],
         // Origins the minted Decart token is allowed to be used from.
         // Leave empty to let Decart accept any origin.
         'allowedOrigins' => [],
@@ -160,6 +169,31 @@ function cfg($key) {
 function model_cost($modelId) {
     $costs = cfg('costs') ?? [];
     return $costs[$modelId] ?? null;
+}
+
+/**
+ * Credits granted for a verified USDT amount, including any package bonus.
+ *
+ * The bonus is decided here, from the amount actually confirmed on-chain —
+ * never from what the browser claims was bought. A customer who pays a tier's
+ * price gets that tier's bonus whether or not they clicked the tile, and
+ * paying above a tier keeps that tier's rate rather than silently dropping it.
+ */
+function credits_for_usdt($usdt) {
+    $usdt = (float)$usdt;
+    $base = $usdt * (float)cfg('pointsPerUsdt');
+    $bonusPct = 0.0;
+    foreach ((cfg('packages') ?? []) as $p) {
+        $tier = (float)($p['usdt'] ?? 0);
+        // Tolerance mirrors the on-chain check: a tiny shortfall from rounding
+        // or a transfer fee shouldn't drop someone out of the tier they paid for.
+        if ($tier > 0 && $usdt + 0.01 >= $tier) {
+            $bonusPct = max($bonusPct, (float)($p['bonusPct'] ?? 0));
+        }
+    }
+    // Scale by (100 + pct)/100 rather than (1 + pct/100): the latter leaves
+    // float dust that turned a clean 28,750 into 28,749.
+    return (int)floor($base * (100 + $bonusPct) / 100 + 1e-9);
 }
 
 /**
