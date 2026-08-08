@@ -27,9 +27,15 @@
         </div>
         <div class="field">
           <label>Send to this address</label>
-          <div class="copy-box">
-            <span id="addr" style="flex:1">Loading…</span>
-            <button class="btn btn-ghost btn-sm" id="copyBtn" type="button">Copy</button>
+          <div class="qr-row">
+            <div class="qr-box" id="qrBox" aria-label="Wallet address QR code"></div>
+            <div class="qr-side">
+              <div class="net-badge" id="netBadge">—</div>
+              <div class="copy-box">
+                <span id="addr" style="flex:1">Loading…</span>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="copyBtn" type="button">Copy address</button>
+            </div>
           </div>
           <span class="hint" id="rateHint"></span>
         </div>
@@ -65,18 +71,50 @@
   </div>
 </div>
 
+<script src="/assets/js/vendor/qrcode.js"></script>
 <script src="/assets/js/app.js"></script>
 <script>
 let info = null;
 const S = (id) => document.getElementById(id);
 
+const NET_LABEL = {
+  bsc:  'BNB Smart Chain · BEP-20',
+  tron: 'Tron · TRC-20',
+};
+
 function renderAddress() {
   if (!info) return;
   const net = S('network').value;
   const addr = net === 'bsc' ? info.bscAddress : info.tronAddress;
+  S('netBadge').textContent = NET_LABEL[net] || net.toUpperCase();
   S('addr').textContent = addr || 'Not configured — contact support';
   S('rateHint').textContent =
     `${info.pointsPerUsdt} credits per USDT · minimum ${info.minUsdt} USDT`;
+  renderQr(addr);
+}
+
+// The QR encodes the bare address, not a payment URI: wallet apps differ on
+// which URI schemes they accept, and an address every scanner can read beats
+// a richer link that some silently reject.
+function renderQr(addr) {
+  const box = S('qrBox');
+  box.innerHTML = '';
+  if (!addr) {
+    box.innerHTML = '<div class="qr-none">No wallet set for this network</div>';
+    return;
+  }
+  if (typeof qrcode !== 'function') {
+    box.innerHTML = '<div class="qr-none">QR unavailable — use the address</div>';
+    return;
+  }
+  try {
+    const q = qrcode(0, 'M');       // 0 = auto-size, M = ~15% error correction
+    q.addData(addr);
+    q.make();
+    box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  } catch {
+    box.innerHTML = '<div class="qr-none">QR unavailable — use the address</div>';
+  }
 }
 
 async function loadHistory() {
