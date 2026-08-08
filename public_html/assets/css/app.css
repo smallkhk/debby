@@ -342,3 +342,59 @@ td.mono, .mono { font-family: var(--mono); font-size: 0.84em; }
   .nav-inner { padding: 10px 0; gap: 8px; }
   .balance-chip { padding: 6px 11px; font-size: .8rem; }
 }
+
+/* ── Pricing / buy page ───────────────────────────────────────────────────── */
+.pricing-hero { position: relative; padding: 54px 0 34px; overflow: hidden; }
+.pricing-hero::before {
+  content: ""; position: absolute; inset: -60% 0 auto 0; height: 520px; z-index: -1; pointer-events: none;
+  background: radial-gradient(50% 55% at 30% 30%, rgba(124, 92, 255, .20), transparent 70%),
+              radial-gradient(45% 50% at 75% 20%, rgba(34, 211, 238, .14), transparent 70%);
+}
+.pricing-title { font-size: clamp(2rem, 5.5vw, 3.4rem); font-weight: 800; letter-spacing: -.03em; }
+.pricing-sub { color: var(--text-dim); margin-top: 12px; font-size: clamp(.95rem, 2vw, 1.08rem); max-width: 640px; }
+
+.plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.plan-card {
+  position: relative; text-align: left; padding: 26px 24px; border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--bg-elev) 0%, var(--bg-elev-2) 100%);
+  border: 1px solid var(--border-soft); cursor: pointer; color: var(--text);
+  font-family: var(--font); transition: border-color .18s, transform .18s;
+}
+.plan-card:hover { border-color: var(--brand); transform: translateY(-3px); }
+.plan-card.featured {
+  background: linear-gradient(180deg, #14162a 0%, var(--bg-elev-2) 100%);
+  border-color: rgba(124, 92, 255, .45);
+}
+.plan-card.active {
+  border-color: transparent;
+  background: linear-gradient(var(--bg-elev-2), var(--bg-elev-2)) padding-box, var(--grad) border-box;
+  border: 2px solid transparent;
+}
+.plan-tag {
+  position: absolute; top: -11px; left: 24px; background: var(--grad); color: #0a0b12;
+  font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  padding: 4px 12px; border-radius: 999px;
+}
+.plan-credits { font-family: var(--mono); font-size: 2.1rem; font-weight: 700; letter-spacing: -.02em; }
+.plan-price { color: var(--brand-2); font-weight: 700; font-size: 1rem; margin-top: 2px; }
+.plan-time { color: var(--text-faint); font-size: .82rem; margin-top: 8px; }
+.plan-time::before { content: "⏱ "; }
+.plan-bonus { color: var(--good); font-size: .8rem; font-weight: 700; margin-top: 6px; }
+.plan-feats {
+  list-style: none; margin: 16px 0 0; padding: 16px 0 0;
+  border-top: 1px solid var(--border-soft); display: grid; gap: 8px;
+}
+.plan-feats li { color: var(--text-dim); font-size: .86rem; display: flex; gap: 8px; }
+.plan-feats li::before { content: "✓"; color: var(--good); font-weight: 700; }
+
+.custom-row {
+  margin-top: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--bg-elev); border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm); padding: 14px 18px;
+}
+.custom-row label { font-size: .84rem; color: var(--text-dim); font-weight: 600; }
+.custom-row input {
+  width: 150px; padding: 9px 12px; border-radius: var(--radius-sm); background: var(--bg-elev-2);
+  border: 1px solid var(--border); color: var(--text); font-family: var(--font); outline: none;
+}
+.custom-row input:focus { border-color: var(--brand); }

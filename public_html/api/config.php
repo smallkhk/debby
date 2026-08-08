@@ -122,10 +122,10 @@ function default_settings() {
         // credits on top of usdt * pointsPerUsdt; it is applied server-side when
         // a payment is verified, so what the page advertises is what is granted.
         'packages' => [
-            ['usdt' => 20,  'bonusPct' => 0,  'tag' => ''],
-            ['usdt' => 50,  'bonusPct' => 5,  'tag' => ''],
-            ['usdt' => 100, 'bonusPct' => 10, 'tag' => 'Best value'],
-            ['usdt' => 250, 'bonusPct' => 15, 'tag' => ''],
+            ['usdt' => 20,  'bonusPct' => 0, 'tag' => ''],
+            ['usdt' => 50,  'bonusPct' => 0, 'tag' => ''],
+            ['usdt' => 100, 'bonusPct' => 0, 'tag' => 'Popular'],
+            ['usdt' => 300, 'bonusPct' => 0, 'tag' => ''],
         ],
         // Origins the minted Decart token is allowed to be used from.
         // Leave empty to let Decart accept any origin.

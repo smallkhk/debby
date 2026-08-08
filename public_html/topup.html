@@ -10,24 +10,29 @@
 <body>
 <nav class="nav" id="nav"></nav>
 
-<div class="wrap page">
-  <h1>Top up your credits</h1>
-  <p class="sub">Send USDT and paste the transaction hash — we verify it on-chain automatically.</p>
+<header class="pricing-hero">
+  <div class="wrap">
+    <div class="eyebrow">Pricing</div>
+    <h1 class="pricing-title">Simple <span class="grad-text">Credit Packages</span></h1>
+    <p class="pricing-sub">Pay as you go. Credits never expire. Use them on any model whenever you want.</p>
+  </div>
+</header>
 
+<div class="wrap" style="padding-bottom:48px">
+  <div class="plan-grid" id="pkgGrid"></div>
+  <div class="custom-row">
+    <label for="customUsdt">Or enter your own amount</label>
+    <input id="customUsdt" type="number" step="0.01" min="0" placeholder="e.g. 75" />
+    <span class="hint" id="customCredits"></span>
+  </div>
+</div>
+
+<div class="wrap page" style="padding-top:0">
   <div class="grid grid-2">
     <div>
-      <div class="card" style="margin-bottom:18px">
-        <h3 style="margin-bottom:6px">1. Choose a package</h3>
-        <p class="hint" style="margin:0 0 14px">Pick how many credits you want. You'll send the matching amount of USDT.</p>
-        <div class="pkg-grid" id="pkgGrid"></div>
-        <div class="field" style="margin-top:14px;margin-bottom:0">
-          <label for="customUsdt">Or enter your own amount (USDT)</label>
-          <input id="customUsdt" type="number" step="0.01" min="0" placeholder="e.g. 75" />
-        </div>
-      </div>
 
       <div class="card" style="margin-bottom:18px">
-        <h3 style="margin-bottom:14px">2. Send USDT</h3>
+        <h3 style="margin-bottom:14px">Send USDT</h3>
         <div class="pay-summary" id="paySummary">
           <div class="pay-row"><span class="muted">Send exactly</span><b id="sendAmount">—</b></div>
           <div class="pay-row"><span class="muted">You receive</span><b id="getCredits">—</b></div>
@@ -61,7 +66,7 @@
       </div>
 
       <div class="card">
-        <h3 style="margin-bottom:14px">3. Submit your transaction</h3>
+        <h3 style="margin-bottom:14px">Submit your transaction</h3>
         <div id="err"></div>
         <form id="form">
           <div class="field">
@@ -159,29 +164,54 @@ function bonusFor(usdt) {
   return bonus;
 }
 
+// Live time is quoted at the DEAREST realtime model, so the figure is the
+// worst case a customer can hit. Quoting the cheapest would promise minutes
+// that vanish the moment they pick a pricier model.
+let perSecondMax = 0;
+let realtimeCount = 0;
+
+function liveTime(credits) {
+  if (!perSecondMax || !credits) return '';
+  const secs = Math.floor(credits / perSecondMax);
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), sec = secs % 60;
+  if (h) return `${h}h ${m}m live time`;
+  if (m) return `${m}m ${sec}s live time`;
+  return `${sec}s live time`;
+}
+
 function buildPackages() {
   const grid = S('pkgGrid');
   const pkgs = (info.packages || []).filter((p) => p.usdt > 0);
   if (!pkgs.length) { grid.parentElement.classList.add('hidden'); return; }
   grid.innerHTML = '';
   pkgs.forEach((p) => {
+    const credits = creditsFor(p.usdt);
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'pkg';
+    b.className = 'plan-card' + (p.tag ? ' featured' : '');
     b.dataset.usdt = p.usdt;
     b.innerHTML =
-      (p.tag ? `<span class="tag">${esc(p.tag)}</span>` : '') +
-      `<div class="usdt">$${esc(p.usdt)}</div>` +
-      `<div class="cr">${creditsFor(p.usdt).toLocaleString()} credits</div>` +
-      (p.bonusPct ? `<div class="bonus">+${esc(p.bonusPct)}% bonus</div>` : '');
-    b.addEventListener('click', () => selectAmount(p.usdt, true));
+      (p.tag ? `<span class="plan-tag">${esc(p.tag)}</span>` : '') +
+      `<div class="plan-credits">${credits.toLocaleString()}</div>` +
+      `<div class="plan-price">$${esc(p.usdt)} USDT</div>` +
+      `<div class="plan-time">${liveTime(credits)}</div>` +
+      (p.bonusPct ? `<div class="plan-bonus">+${esc(p.bonusPct)}% bonus credits</div>` : '') +
+      `<ul class="plan-feats">` +
+        `<li>All ${realtimeCount} live AI models</li>` +
+        `<li>Real-time transformation</li>` +
+        `<li>Credits never expire</li>` +
+      `</ul>`;
+    b.addEventListener('click', () => {
+      selectAmount(p.usdt, true);
+      document.getElementById('paySummary').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
     grid.appendChild(b);
   });
 }
 
 function selectAmount(usdt, fromTile) {
   chosenUsdt = Number(usdt) || 0;
-  document.querySelectorAll('.pkg').forEach((el) =>
+  document.querySelectorAll('.plan-card').forEach((el) =>
     el.classList.toggle('active', Number(el.dataset.usdt) === chosenUsdt));
   if (fromTile) S('customUsdt').value = '';
 
@@ -203,8 +233,11 @@ function selectAmount(usdt, fromTile) {
 
 S('customUsdt').addEventListener('input', () => {
   const v = parseFloat(S('customUsdt').value);
-  document.querySelectorAll('.pkg').forEach((el) => el.classList.remove('active'));
-  selectAmount(Number.isFinite(v) ? v : 0, false);
+  document.querySelectorAll('.plan-card').forEach((el) => el.classList.remove('active'));
+  const amount = Number.isFinite(v) ? v : 0;
+  selectAmount(amount, false);
+  const c = creditsFor(amount);
+  S('customCredits').textContent = amount ? `${c.toLocaleString()} credits · ${liveTime(c)}` : '';
 });
 
 async function loadHistory() {
@@ -257,8 +290,14 @@ S('form').addEventListener('submit', async (e) => {
 (async function init() {
   await mountNav('topup');
   if (!(await requireUser())) return;
-  const r = await API.get('/api/payments.php?action=info');
+  const [r, m] = await Promise.all([
+    API.get('/api/payments.php?action=info'),
+    API.get('/api/job.php?action=models').catch(() => ({ models: [] })),
+  ]);
   info = r.info;
+  const realtime = (m.models || []).filter((x) => x.type === 'realtime');
+  realtimeCount = realtime.length;
+  perSecondMax = realtime.reduce((a, x) => Math.max(a, x.perSecond || 0), 0);
   buildPackages();
   renderAddress();
   loadHistory();
