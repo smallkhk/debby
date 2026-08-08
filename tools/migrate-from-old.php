@@ -125,9 +125,21 @@ if ($oldPlain !== '' && strlen($oldPlain) >= 12) {
 
 // Costs: keep the operator's rates, drop the contradictory extra field. A
 // realtime model carrying a stray `flat` (and vice versa) confuses pricing.
+$knownLabels = [
+    'lucy-2.1'         => 'Lucy 2.1 — Live edit',
+    'lucy-2.5'         => 'Lucy 2.5 — Live edit',
+    'lucy-restyle-2'   => 'Lucy Restyle 2 — Restyle',
+    'lucy-vton-3'      => 'Lucy VTON 3 — Virtual try-on',
+    'lucy-vton-2'      => 'Lucy VTON 2 — Virtual try-on',
+    'lucy-image-2'     => 'Lucy Image 2 — Image edit',
+    'lucy-2-v2v'       => 'Lucy 2 — Video to video',
+    'lucy-restyle-v2v' => 'Lucy Restyle — Video to video',
+];
 foreach (($old['costs'] ?? []) as $id => $c) {
     $type = $c['type'] ?? 'realtime';
-    $entry = ['type' => $type, 'label' => $c['label'] ?? $id];
+    // Defaulting the label to the id would show customers a raw model id.
+    $entry = ['type' => $type,
+        'label' => $c['label'] ?? $knownLabels[$id] ?? ucwords(str_replace('-', ' ', $id))];
     if ($type === 'realtime') $entry['perSecond'] = (int)($c['perSecond'] ?? 6);
     else                      $entry['flat']      = (int)($c['flat'] ?? 10);
     $settings['costs'][$id] = $entry;

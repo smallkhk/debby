@@ -1,0 +1,36 @@
+{
+  "name": "eclipse-creator-studio",
+  "productName": "Eclipse Creator Studio",
+  "version": "1.0.0",
+  "description": "Real-time AI video studio for Windows — live restyling, virtual try-on, Picture-in-Picture and OBS-ready output.",
+  "main": "src/main.js",
+  "author": "Eclipse Creator Studio",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "online.eclipselivecam.studio",
+    "productName": "Eclipse Creator Studio",
+    "files": ["src/**/*", "!**/*.map"],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "EclipseCreatorStudio-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Eclipse Creator Studio"
+    }
+  }
+}

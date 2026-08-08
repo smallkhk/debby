@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' https: wss:;" />
+<title>Eclipse Creator Studio</title>
+<link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+<!-- ── Boot ─────────────────────────────────────────────────────────────── -->
+<section id="view-boot" class="view center-view">
+  <div class="logo-lg"></div>
+  <p class="muted">Starting up…</p>
+</section>
+
+<!-- ── Activation ───────────────────────────────────────────────────────── -->
+<section id="view-activate" class="view center-view hidden">
+  <div class="card auth">
+    <div class="brand"><span class="logo"></span> Eclipse Creator Studio</div>
+    <h1>Activate this device</h1>
+    <p class="sub">Enter the activation key you were given. Each key works on one computer.</p>
+    <div id="actErr"></div>
+    <div class="field">
+      <label for="actKey">Activation key</label>
+      <input id="actKey" type="text" class="mono" placeholder="ECLPS-XXXXX-XXXXX-XXXXX" spellcheck="false" />
+    </div>
+    <button class="btn btn-primary btn-block" id="actBtn">Activate</button>
+    <div class="foot"><a href="#" id="actSettings">Server settings</a></div>
+  </div>
+</section>
+
+<!-- ── Login ────────────────────────────────────────────────────────────── -->
+<section id="view-login" class="view center-view hidden">
+  <div class="card auth">
+    <div class="brand"><span class="logo"></span> Eclipse Creator Studio</div>
+    <h1>Sign in</h1>
+    <p class="sub">Use your Eclipse account.</p>
+    <div id="loginErr"></div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input id="email" type="email" spellcheck="false" />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" type="password" />
+    </div>
+    <button class="btn btn-primary btn-block" id="loginBtn">Sign in</button>
+    <div class="foot">
+      <a href="#" id="openSignup">Create an account</a> ·
+      <a href="#" id="openForgot">Forgot password</a> ·
+      <a href="#" id="loginSettings">Settings</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Settings ─────────────────────────────────────────────────────────── -->
+<section id="view-settings" class="view center-view hidden">
+  <div class="card auth">
+    <div class="brand"><span class="logo"></span> Settings</div>
+    <div class="field">
+      <label for="serverUrl">Server address</label>
+      <input id="serverUrl" type="text" spellcheck="false" placeholder="https://eclipselivecam.online" />
+      <span class="hint">The website this app connects to. Change only if told to.</span>
+    </div>
+    <div class="field">
+      <label>Device activation</label>
+      <div class="copy-box"><span id="devTokenOut" class="mono">—</span></div>
+      <span class="hint">Clearing this will require a new activation key.</span>
+    </div>
+    <button class="btn btn-primary btn-block" id="saveSettings">Save</button>
+    <button class="btn btn-ghost btn-block" id="clearActivation" style="margin-top:8px">Clear activation</button>
+    <div class="foot"><a href="#" id="settingsBack">← Back</a></div>
+  </div>
+</section>
+
+<!-- ── Studio ───────────────────────────────────────────────────────────── -->
+<section id="view-studio" class="view hidden">
+  <header class="topbar">
+    <div class="brand"><span class="logo"></span> Eclipse</div>
+    <div class="topbar-right">
+      <span class="chip" id="balanceChip"><b id="balance">—</b> credits</span>
+      <button class="btn btn-ghost btn-sm" id="topUpBtn" title="Open the top-up page in your browser">Top up</button>
+      <button class="btn btn-ghost btn-sm" id="settingsBtn">Settings</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign out</button>
+    </div>
+  </header>
+
+  <div class="studio">
+    <aside class="panel">
+      <div class="field">
+        <label for="cameraSelect">Camera</label>
+        <select id="cameraSelect"></select>
+      </div>
+      <div class="field">
+        <label for="micSelect">Microphone</label>
+        <select id="micSelect"></select>
+      </div>
+      <div class="field">
+        <label for="resSelect">Camera quality</label>
+        <select id="resSelect">
+          <option value="model">Match model (recommended)</option>
+          <option value="1280x720">720p</option>
+          <option value="1920x1080">1080p</option>
+          <option value="640x360">360p (low bandwidth)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="modelSelect">AI model</label>
+        <select id="modelSelect"></select>
+      </div>
+
+      <div class="field">
+        <div class="group-title">Style presets</div>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="field">
+        <label for="promptInput">Prompt</label>
+        <textarea id="promptInput" placeholder="Describe the look…"></textarea>
+        <button class="btn btn-ghost btn-sm" id="applyPrompt">Apply prompt</button>
+      </div>
+
+      <div class="meter hidden" id="meter">
+        <div class="meter-row"><span class="muted">Elapsed</span><b id="meterTime">00:00</b></div>
+        <div class="meter-row"><span class="muted">Spent</span><b id="meterCost">0</b></div>
+        <div class="meter-bar"><i id="meterBar"></i></div>
+        <div class="hint" id="meterLeft">—</div>
+      </div>
+
+      <div class="panel-actions">
+        <button class="btn btn-primary btn-block" id="startBtn">▶ Start live stream</button>
+        <button class="btn btn-danger btn-block" id="stopBtn" disabled>■ Stop</button>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="stage-actions">
+        <span class="status" id="status"><span class="dot"></span> <span id="statusText">Idle</span></span>
+        <span class="spacer"></span>
+        <button class="btn btn-ghost btn-sm" id="pipBtn" disabled title="Ctrl+Shift+P">Picture-in-Picture</button>
+        <button class="btn btn-ghost btn-sm" id="outBtn" disabled title="Clean window for OBS">OBS output</button>
+        <button class="btn btn-ghost btn-sm" id="recBtn" disabled title="Ctrl+Shift+R">● Record</button>
+        <button class="btn btn-ghost btn-sm" id="fsBtn" disabled>Fullscreen</button>
+      </div>
+
+      <div class="videos">
+        <div class="video-box">
+          <span class="badge live">● CAMERA</span>
+          <video id="localVideo" autoplay muted playsinline></video>
+          <div class="placeholder" id="localPlaceholder">Your camera preview</div>
+        </div>
+        <div class="video-box">
+          <span class="badge out">✦ AI OUTPUT</span>
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="placeholder" id="remotePlaceholder">The transformed output — capture this in OBS</div>
+        </div>
+      </div>
+
+      <div class="help">
+        <b>Shortcuts</b> — these work even when Eclipse is behind another window:
+        <span class="kbd">Ctrl+Shift+S</span> start/stop ·
+        <span class="kbd">Ctrl+Shift+P</span> Picture-in-Picture ·
+        <span class="kbd">Ctrl+Shift+R</span> record
+      </div>
+    </main>
+  </div>
+</section>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
