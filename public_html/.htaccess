@@ -1,6 +1,10 @@
 # ── Eclipse Creator Studio — Apache / LiteSpeed config (cPanel) ──────────────
 
-DirectoryIndex index.html index.php
+# The Studio is the landing page: visiting the domain drops customers straight
+# into the app. Signed-out visitors are bounced to /login.html by the Studio
+# itself. The marketing/pricing page is still reachable at /index.html and is
+# linked from the login and register screens.
+DirectoryIndex studio.html index.html index.php
 
 # ── Security headers ─────────────────────────────────────────────────────────
 <IfModule mod_headers.c>
