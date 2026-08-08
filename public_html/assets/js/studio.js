@@ -110,6 +110,17 @@ async function listDevices() {
 async function loadModels() {
   const { models: list } = await API.get('/api/job.php?action=models');
   modelCatalog = list.filter((m) => m.type === 'realtime');
+
+  // The Studio can only offer models that stream. Say where the rest live,
+  // otherwise they look missing rather than simply being a different tool.
+  const batch = list.filter((m) => m.type === 'batch');
+  const hint = document.getElementById('batchHint');
+  if (hint) {
+    hint.innerHTML = batch.length
+      ? `Live models only. ${batch.length} more for photo &amp; video editing — `
+        + `<a href="/create.html" style="color:var(--brand-2);font-weight:600">open Create</a>.`
+      : '';
+  }
   modelSelect.innerHTML = '';
   for (const m of modelCatalog) {
     const o = document.createElement('option');

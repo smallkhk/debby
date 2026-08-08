@@ -319,3 +319,26 @@ td.mono, .mono { font-family: var(--mono); font-size: 0.84em; }
 .pkg-edit { display: grid; grid-template-columns: 1fr 1fr 1.4fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
 .pkg-edit input { padding: 9px 11px; font-size: .88rem; }
 @media (max-width: 620px) { .pkg-edit { grid-template-columns: 1fr 1fr; } }
+
+/* ── Mobile navigation ────────────────────────────────────────────────────── */
+.nav-burger {
+  display: none; background: var(--bg-elev-2); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius-sm); font-size: 1rem;
+  padding: 7px 12px; cursor: pointer; line-height: 1; font-family: var(--font);
+}
+.nav-drawer { display: none; }
+@media (max-width: 820px) {
+  .nav-burger { display: block; }
+  .nav-drawer[hidden] { display: none; }
+  .nav-drawer {
+    display: flex; flex-direction: column; gap: 2px; padding: 8px 4vw 12px;
+    border-top: 1px solid var(--border-soft); background: var(--bg-elev);
+  }
+  .nav-drawer a {
+    padding: 12px 10px; border-radius: var(--radius-sm); color: var(--text);
+    font-weight: 600; font-size: .95rem;
+  }
+  .nav-drawer a:active { background: var(--bg-elev-2); }
+  .nav-inner { padding: 10px 0; gap: 8px; }
+  .balance-chip { padding: 6px 11px; font-size: .8rem; }
+}

@@ -73,26 +73,42 @@ async function mountNav(active = '') {
   const link = (href, label, key) =>
     `<a href="${href}"${active === key ? ' style="color:var(--text)"' : ''}>${label}</a>`;
 
+  // Links are duplicated into a collapsible menu rather than simply hidden on
+  // narrow screens. Hiding them left phone users with no route to the Create
+  // page at all, so half the models looked as though they did not exist.
+  const links = user
+    ? [['/studio.html', 'Studio', 'studio'], ['/create.html', 'Create', 'create'], ['/topup.html', 'Top up', 'topup']]
+    : [['/index.html#features', 'Features', ''], ['/index.html#pricing', 'Pricing', '']];
+
   host.innerHTML = `
     <div class="wrap nav-inner">
       <a class="brand" href="/"><span class="logo"></span> Eclipse</a>
       <div class="nav-links">
+        ${links.map(([h, l, k]) => `<span class="hide-sm">${link(h, l, k)}</span>`).join('')}
         ${user ? `
-          <span class="hide-sm">${link('/studio.html', 'Studio', 'studio')}</span>
-          <span class="hide-sm">${link('/create.html', 'Create', 'create')}</span>
-          <span class="hide-sm">${link('/topup.html', 'Top up', 'topup')}</span>
           <a class="balance-chip" href="/topup.html" title="Your credit balance">
             <b id="navBalance">${user.points}</b> pts
           </a>
           <button class="btn btn-ghost btn-sm" id="navLogout">Log out</button>
         ` : `
-          <span class="hide-sm">${link('/#features', 'Features', '')}</span>
-          <span class="hide-sm">${link('/#pricing', 'Pricing', '')}</span>
           <a class="btn btn-ghost btn-sm" href="/login.html">Log in</a>
           <a class="btn btn-primary btn-sm" href="/register.html">Get started</a>
         `}
+        <button class="nav-burger" id="navBurger" aria-label="Menu" aria-expanded="false">☰</button>
       </div>
+    </div>
+    <div class="nav-drawer" id="navDrawer" hidden>
+      ${links.map(([h, l]) => `<a href="${h}">${l}</a>`).join('')}
     </div>`;
+
+  const burger = document.getElementById('navBurger');
+  const drawer = document.getElementById('navDrawer');
+  burger?.addEventListener('click', () => {
+    const open = drawer.hasAttribute('hidden');
+    drawer.toggleAttribute('hidden', !open);
+    burger.setAttribute('aria-expanded', String(open));
+    burger.textContent = open ? '✕' : '☰';
+  });
 
   const out = document.getElementById('navLogout');
   if (out) {
