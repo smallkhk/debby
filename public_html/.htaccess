@@ -52,9 +52,24 @@ DirectoryIndex studio.html index.html index.php
 # RewriteRule ^(.*)$ https://example.online/$1 [R=301,L]
 
 # ── Static asset caching ─────────────────────────────────────────────────────
+# CSS and JS are cached for an hour, not a week. Pages link them with a ?v=
+# build token that changes on release, so a browser picks up new files at once
+# — but only if it also fetched the new HTML. A short TTL is the safety net for
+# the common case where some files are uploaded before others: the site
+# self-heals within the hour instead of showing a broken mix for seven days.
 <IfModule mod_expires.c>
   ExpiresActive On
-  ExpiresByType text/css "access plus 7 days"
-  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType text/css "access plus 1 hour"
+  ExpiresByType application/javascript "access plus 1 hour"
   ExpiresByType image/svg+xml "access plus 30 days"
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=3600, must-revalidate"
+  </FilesMatch>
+  # HTML must never be cached, or a browser keeps requesting the old ?v= token
+  # and the whole scheme stops working.
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
 </IfModule>
