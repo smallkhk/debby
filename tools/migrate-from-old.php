@@ -126,14 +126,14 @@ if ($oldPlain !== '' && strlen($oldPlain) >= 12) {
 // Costs: keep the operator's rates, drop the contradictory extra field. A
 // realtime model carrying a stray `flat` (and vice versa) confuses pricing.
 $knownLabels = [
-    'lucy-2.1'         => 'Lucy 2.1 — Live edit',
-    'lucy-2.5'         => 'Lucy 2.5 — Live edit',
-    'lucy-restyle-2'   => 'Lucy Restyle 2 — Restyle',
-    'lucy-vton-3'      => 'Lucy VTON 3 — Virtual try-on',
-    'lucy-vton-2'      => 'Lucy VTON 2 — Virtual try-on',
-    'lucy-image-2'     => 'Lucy Image 2 — Image edit',
-    'lucy-2-v2v'       => 'Lucy 2 — Video to video',
-    'lucy-restyle-v2v' => 'Lucy Restyle — Video to video',
+    'lucy-2.1'         => 'Eclipse Live 2.1',
+    'lucy-2.5'         => 'Eclipse Live 2.5',
+    'lucy-restyle-2'   => 'Eclipse Restyle 2',
+    'lucy-vton-3'      => 'Eclipse VTON 3',
+    'lucy-vton-2'      => 'Eclipse VTON 2',
+    'lucy-image-2'     => 'Eclipse Image 2',
+    'lucy-2-v2v'       => 'Eclipse Video 2',
+    'lucy-restyle-v2v' => 'Eclipse Restyle Video',
 ];
 foreach (($old['costs'] ?? []) as $id => $c) {
     $type = $c['type'] ?? 'realtime';
@@ -146,10 +146,10 @@ foreach (($old['costs'] ?? []) as $id => $c) {
 }
 if (!$settings['costs']) {
     $settings['costs'] = [
-        'lucy-2.5'       => ['type' => 'realtime', 'perSecond' => 6, 'label' => 'Lucy 2.5 — Live edit'],
-        'lucy-restyle-2' => ['type' => 'realtime', 'perSecond' => 3, 'label' => 'Lucy Restyle 2'],
-        'lucy-vton-3'    => ['type' => 'realtime', 'perSecond' => 6, 'label' => 'Lucy VTON 3 — Try-on'],
-        'lucy-image-2'   => ['type' => 'batch',    'flat' => 10,     'label' => 'Lucy Image 2'],
+        'lucy-2.5'       => ['type' => 'realtime', 'perSecond' => 6, 'label' => 'Eclipse Live 2.5'],
+        'lucy-restyle-2' => ['type' => 'realtime', 'perSecond' => 3, 'label' => 'Eclipse Restyle 2'],
+        'lucy-vton-3'    => ['type' => 'realtime', 'perSecond' => 6, 'label' => 'Eclipse VTON 3'],
+        'lucy-image-2'   => ['type' => 'batch',    'flat' => 10,     'label' => 'Eclipse Image 2'],
     ];
 }
 echo "API key carried over: " . ($settings['decartApiKey'] ? 'yes' : 'NO — set it in the admin panel') . "\n";

@@ -193,7 +193,7 @@ case 'beat': {
     $collected = (int)$_SESSION['holds'][$holdId]['collected'];
     $refund    = max(0, $collected - $due);
     if ($refund > 0) $balance = adjust_points($user['id'], $refund);
-    if ($due > 0) log_tx($user['id'], 'spend', -min($due, $collected), "Realtime {$hold['model']} — {$secs}s");
+    if ($due > 0) log_tx($user['id'], 'spend', -min($due, $collected), model_label($hold['model']) . " — {$secs}s");
     unset($_SESSION['holds'][$holdId]);
 
     // Low-balance nudge

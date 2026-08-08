@@ -77,7 +77,7 @@ case 'submit': {
         json_err('Generation failed: ' . ($err['message'] ?? $err['error'] ?? 'provider error'), 502);
     }
 
-    log_tx($user['id'], 'spend', -$flat, "Batch {$model}");
+    log_tx($user['id'], 'spend', -$flat, model_label($model));
 
     if ($isImage) {
         // Response body IS the image. Park it for one retrieval.
@@ -158,25 +158,9 @@ case 'content': {
 
 // Models the studio may offer, with live pricing — drives the UI dropdown.
 case 'models': {
-    // Settings migrated from older installs carry no labels, which would show
-    // customers a raw id like "lucy-2.5". Fall back to a readable name.
-    $known = [
-        'lucy-2.1'         => 'Lucy 2.1 — Live edit',
-        'lucy-2.5'         => 'Lucy 2.5 — Live edit',
-        'lucy-restyle-2'   => 'Lucy Restyle 2 — Restyle',
-        'lucy-vton-3'      => 'Lucy VTON 3 — Virtual try-on',
-        'lucy-vton-2'      => 'Lucy VTON 2 — Virtual try-on',
-        'lucy-image-2'     => 'Lucy Image 2 — Image edit',
-        'lucy-2-v2v'       => 'Lucy 2 — Video to video',
-        'lucy-restyle-v2v' => 'Lucy Restyle — Video to video',
-    ];
     $out = [];
     foreach ((cfg('costs') ?? []) as $id => $c) {
-        // A label equal to the id means it was never really set (older migrations
-        // defaulted it that way), so treat it as absent.
-        $stored = ($c['label'] ?? '') !== '' && $c['label'] !== $id ? $c['label'] : null;
-        $label  = $stored ?? $known[$id] ?? ucwords(str_replace('-', ' ', $id));
-        $out[] = ['id' => $id, 'label' => $label, 'type' => $c['type'] ?? 'realtime',
+        $out[] = ['id' => $id, 'label' => model_label($id), 'type' => $c['type'] ?? 'realtime',
             'perSecond' => $c['perSecond'] ?? null, 'flat' => $c['flat'] ?? null];
     }
     json_out(['ok' => true, 'models' => $out]);

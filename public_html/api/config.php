@@ -124,10 +124,10 @@ function default_settings() {
         'bscAddress'     => '',
         'tronAddress'    => '',
         'costs' => [
-            'lucy-2.5'       => ['type' => 'realtime', 'perSecond' => 6,  'label' => 'Lucy 2.5 — Live edit'],
-            'lucy-restyle-2' => ['type' => 'realtime', 'perSecond' => 3,  'label' => 'Lucy Restyle 2'],
-            'lucy-vton-3'    => ['type' => 'realtime', 'perSecond' => 6,  'label' => 'Lucy VTON 3 — Try-on'],
-            'lucy-image-2'   => ['type' => 'batch',    'flat'      => 10, 'label' => 'Lucy Image 2'],
+            'lucy-2.5'       => ['type' => 'realtime', 'perSecond' => 6,  'label' => 'Eclipse Live 2.5'],
+            'lucy-restyle-2' => ['type' => 'realtime', 'perSecond' => 3,  'label' => 'Eclipse Restyle 2'],
+            'lucy-vton-3'    => ['type' => 'realtime', 'perSecond' => 6,  'label' => 'Eclipse VTON 3'],
+            'lucy-image-2'   => ['type' => 'batch',    'flat'      => 10, 'label' => 'Eclipse Image 2'],
         ],
         'smtpHost' => '', 'smtpPort' => 587, 'smtpUser' => '', 'smtpPass' => '',
         'smtpFrom' => '', 'smtpFromName' => 'Eclipse Creator Studio', 'smtpSecure' => 'tls',
@@ -160,6 +160,31 @@ function cfg($key) {
 function model_cost($modelId) {
     $costs = cfg('costs') ?? [];
     return $costs[$modelId] ?? null;
+}
+
+/**
+ * Customer-facing name for a model.
+ *
+ * The provider's own ids (lucy-*) are never shown: this is a white-labelled
+ * product and the upstream branding is not the operator's to advertise. Only
+ * the raw id is ever sent upstream. An operator label set in the admin panel
+ * wins; a label equal to the id counts as unset, because older migrations
+ * defaulted it that way.
+ */
+function model_label($modelId) {
+    static $known = [
+        'lucy-2.1'         => 'Eclipse Live 2.1',
+        'lucy-2.5'         => 'Eclipse Live 2.5',
+        'lucy-restyle-2'   => 'Eclipse Restyle 2',
+        'lucy-vton-3'      => 'Eclipse VTON 3',
+        'lucy-vton-2'      => 'Eclipse VTON 2',
+        'lucy-image-2'     => 'Eclipse Image 2',
+        'lucy-2-v2v'       => 'Eclipse Video 2',
+        'lucy-restyle-v2v' => 'Eclipse Restyle Video',
+    ];
+    $c = model_cost($modelId);
+    $set = ($c['label'] ?? '') !== '' && $c['label'] !== $modelId ? $c['label'] : null;
+    return $set ?? $known[$modelId] ?? ucwords(str_replace('-', ' ', $modelId));
 }
 
 // ── USERS ────────────────────────────────────────────────────────────────────
