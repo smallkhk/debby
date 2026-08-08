@@ -22,6 +22,12 @@
 }
 
 * { box-sizing: border-box; }
+
+/* The `hidden` attribute must win over element display rules such as
+   `.video-box video { display: block }`, otherwise a hidden <video> still
+   paints its controls. */
+[hidden] { display: none !important; }
+
 html { scroll-behavior: smooth; }
 body {
   margin: 0; font-family: var(--font); background: var(--bg); color: var(--text);

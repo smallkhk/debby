@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Create — Eclipse Creator Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css" />
+</head>
+<body>
+<nav class="nav" id="nav"></nav>
+
+<div class="wrap page">
+  <h1>Create</h1>
+  <p class="sub">Upload a photo or video, describe the change, and get a finished file back. Charged once per job — not per second.</p>
+
+  <div class="grid grid-2">
+    <!-- ── Input ────────────────────────────────────────────────────────── -->
+    <div>
+      <div class="card">
+        <div class="field">
+          <label for="modelSelect">What do you want to make?</label>
+          <select id="modelSelect"><option>Loading…</option></select>
+          <span class="hint" id="modelHint"></span>
+        </div>
+
+        <div class="field">
+          <label for="fileInput">Your file</label>
+          <input type="file" id="fileInput" hidden />
+          <div class="refimg" id="fileDrop" tabindex="0" role="button" aria-label="Choose a file">
+            <img id="filePreview" alt="" hidden />
+            <video id="videoPreview" hidden muted playsinline controls></video>
+            <div class="refimg-empty" id="fileEmpty">
+              <b>Click or drop a file</b>
+              <span id="fileHint">Choose a model first</span>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm hidden" id="fileClear" style="align-self:flex-start">Remove file</button>
+        </div>
+
+        <div class="field">
+          <label for="promptInput">What should change?</label>
+          <textarea id="promptInput" placeholder="e.g. 'make the jacket red leather' or 'turn this into an anime scene'"></textarea>
+        </div>
+
+        <div id="err"></div>
+        <button class="btn btn-primary btn-block" id="goBtn" disabled>Generate</button>
+        <div class="hint center" id="costHint" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- ── Result ───────────────────────────────────────────────────────── -->
+    <div>
+      <div class="card">
+        <h3 style="margin-bottom:14px">Result</h3>
+        <div class="video-box" style="aspect-ratio:1/1;margin-bottom:14px">
+          <img id="resultImg" hidden style="width:100%;height:100%;object-fit:contain;background:#000" alt="" />
+          <video id="resultVideo" hidden controls style="width:100%;height:100%;object-fit:contain;background:#000"></video>
+          <div class="placeholder" id="resultPlaceholder">Your finished file appears here.</div>
+        </div>
+        <a class="btn btn-primary btn-block hidden" id="downloadBtn" download>Download</a>
+        <div class="hint" id="statusLine" style="margin-top:10px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/app.js"></script>
+<script>
+const S = (id) => document.getElementById(id);
+let models = [], current = null, chosenFile = null, previewUrl = null, resultUrl = null, pollTimer = null;
+
+function currentModel() { return models.find((m) => m.id === S('modelSelect').value) || null; }
+function isImageModel(m) { return m && /image/i.test(m.id); }
+
+function refreshModelUi() {
+  const m = currentModel();
+  current = m;
+  if (!m) return;
+  const img = isImageModel(m);
+  S('fileInput').accept = img ? 'image/*' : 'video/*';
+  S('fileHint').textContent = img ? 'A photo (JPG or PNG)' : 'A video clip (MP4 or MOV)';
+  S('modelHint').textContent = img
+    ? 'Edits a still photo from your description.'
+    : 'Re-renders a whole video clip. Longer clips take longer.';
+  S('costHint').textContent = `Costs ${m.flat} credits per job`;
+  // Switching between photo and video invalidates whatever was picked.
+  if (chosenFile) clearFile();
+  updateGo();
+}
+
+function updateGo() {
+  S('goBtn').disabled = !(current && chosenFile && S('promptInput').value.trim());
+}
+
+function setFile(file) {
+  if (!file || !current) return;
+  const wantImage = isImageModel(current);
+  const okType = wantImage ? file.type.startsWith('image/') : file.type.startsWith('video/');
+  if (!okType) return toast(wantImage ? 'Please choose an image file.' : 'Please choose a video file.', true);
+  if (file.size > 100 * 1024 * 1024) return toast('File must be under 100 MB.', true);
+
+  chosenFile = file;
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = URL.createObjectURL(file);
+  S('fileEmpty').classList.add('hidden');
+  S('fileClear').classList.remove('hidden');
+  if (wantImage) {
+    S('filePreview').src = previewUrl; S('filePreview').hidden = false; S('videoPreview').hidden = true;
+  } else {
+    S('videoPreview').src = previewUrl; S('videoPreview').hidden = false; S('filePreview').hidden = true;
+  }
+  updateGo();
+}
+
+function clearFile() {
+  chosenFile = null;
+  if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+  S('filePreview').hidden = true; S('filePreview').removeAttribute('src');
+  S('videoPreview').hidden = true; S('videoPreview').removeAttribute('src');
+  S('fileEmpty').classList.remove('hidden');
+  S('fileClear').classList.add('hidden');
+  S('fileInput').value = '';
+  updateGo();
+}
+
+function showResult(url, isVideo, filename) {
+  S('resultPlaceholder').style.display = 'none';
+  if (isVideo) { S('resultVideo').src = url; S('resultVideo').hidden = false; S('resultImg').hidden = true; }
+  else { S('resultImg').src = url; S('resultImg').hidden = false; S('resultVideo').hidden = true; }
+  const dl = S('downloadBtn');
+  dl.href = url; dl.download = filename; dl.classList.remove('hidden');
+}
+
+function resetResult() {
+  if (resultUrl) { URL.revokeObjectURL(resultUrl); resultUrl = null; }
+  S('resultImg').hidden = true; S('resultVideo').hidden = true;
+  S('resultPlaceholder').style.display = '';
+  S('downloadBtn').classList.add('hidden');
+}
+
+async function generate() {
+  const m = current;
+  if (!m || !chosenFile) return;
+  clearInterval(pollTimer);
+  resetResult();
+  S('err').innerHTML = '';
+  S('goBtn').disabled = true;
+  S('goBtn').textContent = 'Uploading…';
+  S('statusLine').textContent = 'Sending your file…';
+
+  const form = new FormData();
+  form.append('model', m.id);
+  form.append('prompt', S('promptInput').value.trim());
+  form.append('data', chosenFile);
+
+  let job;
+  try {
+    job = await API.call('/api/job.php?action=submit', { method: 'POST', form });
+  } catch (e) {
+    S('err').innerHTML = `<div class="alert alert-err">${esc(e.message)}</div>`;
+    S('statusLine').textContent = '';
+    S('goBtn').disabled = false; S('goBtn').textContent = 'Generate';
+    return;
+  }
+
+  setBalance(job.balance);
+  S('goBtn').textContent = 'Working…';
+  S('statusLine').textContent = 'Generating — this can take a minute. You can leave this tab open.';
+
+  // Image jobs finish on submit; video jobs need polling.
+  const poll = async () => {
+    try {
+      const r = await API.get(`/api/job.php?action=status&id=${encodeURIComponent(job.job_id)}`);
+      if (r.status === 'completed') {
+        clearInterval(pollTimer);
+        await fetchResult(job.job_id, job.type === 'video');
+      } else if (r.status === 'failed') {
+        clearInterval(pollTimer);
+        S('err').innerHTML = '<div class="alert alert-err">Generation failed. Your credits were refunded.</div>';
+        S('statusLine').textContent = '';
+        S('goBtn').disabled = false; S('goBtn').textContent = 'Generate';
+      }
+    } catch { /* keep polling; a blip shouldn't kill the job */ }
+  };
+  await poll();
+  if (S('goBtn').textContent === 'Working…') pollTimer = setInterval(poll, 3000);
+}
+
+async function fetchResult(jobId, isVideo) {
+  S('statusLine').textContent = 'Downloading your file…';
+  try {
+    const res = await fetch(`/api/job.php?action=content&id=${encodeURIComponent(jobId)}`, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('Could not fetch the result.');
+    const blob = await res.blob();
+    resultUrl = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    showResult(resultUrl, isVideo, `eclipse-${stamp}.${isVideo ? 'mp4' : 'png'}`);
+    S('statusLine').textContent = 'Done.';
+    toast('Your file is ready');
+  } catch (e) {
+    S('err').innerHTML = `<div class="alert alert-err">${esc(e.message)}</div>`;
+    S('statusLine').textContent = '';
+  }
+  S('goBtn').disabled = false;
+  S('goBtn').textContent = 'Generate';
+  updateGo();
+}
+
+// ── Wiring ──────────────────────────────────────────────────────────────────
+S('fileDrop').addEventListener('click', () => S('fileInput').click());
+S('fileDrop').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); S('fileInput').click(); }
+});
+S('fileInput').addEventListener('change', () => setFile(S('fileInput').files[0]));
+S('fileClear').addEventListener('click', (e) => { e.stopPropagation(); clearFile(); });
+['dragenter', 'dragover'].forEach((ev) =>
+  S('fileDrop').addEventListener(ev, (e) => { e.preventDefault(); S('fileDrop').classList.add('drag'); }));
+['dragleave', 'drop'].forEach((ev) =>
+  S('fileDrop').addEventListener(ev, (e) => { e.preventDefault(); S('fileDrop').classList.remove('drag'); }));
+S('fileDrop').addEventListener('drop', (e) => setFile(e.dataTransfer?.files?.[0]));
+S('modelSelect').addEventListener('change', refreshModelUi);
+S('promptInput').addEventListener('input', updateGo);
+S('goBtn').addEventListener('click', generate);
+
+(async function init() {
+  await mountNav('create');
+  if (!(await requireUser())) return;
+  const r = await API.get('/api/job.php?action=models');
+  models = (r.models || []).filter((m) => m.type === 'batch');
+  const sel = S('modelSelect');
+  sel.innerHTML = '';
+  if (!models.length) {
+    sel.innerHTML = '<option value="">No models available</option>';
+    return;
+  }
+  models.forEach((m) => {
+    const o = document.createElement('option');
+    o.value = m.id;
+    o.textContent = `${m.label} — ${m.flat} credits`;
+    sel.appendChild(o);
+  });
+  refreshModelUi();
+})();
+</script>
+</body>
+</html>

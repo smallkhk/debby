@@ -79,6 +79,7 @@ async function mountNav(active = '') {
       <div class="nav-links">
         ${user ? `
           <span class="hide-sm">${link('/studio.html', 'Studio', 'studio')}</span>
+          <span class="hide-sm">${link('/create.html', 'Create', 'create')}</span>
           <span class="hide-sm">${link('/topup.html', 'Top up', 'topup')}</span>
           <a class="balance-chip" href="/topup.html" title="Your credit balance">
             <b id="navBalance">${user.points}</b> pts
