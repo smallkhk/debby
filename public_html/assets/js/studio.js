@@ -162,11 +162,20 @@ function startMeter() {
   };
   tick();
   tickTimer = setInterval(tick, 1000);
-  // Periodically report progress so a crashed tab still bills correctly.
-  beatTimer = setInterval(() => {
-    if (session) {
-      API.post('/api/session.php?action=beat', { holdId: session.holdId, seconds: elapsed() }).catch(() => {});
-    }
+  // Report progress so usage is billed as it happens and the balance in the nav
+  // ticks down live, rather than the whole cost landing when the stream ends.
+  beatTimer = setInterval(async () => {
+    if (!session) return;
+    try {
+      const r = await API.post('/api/session.php?action=beat', {
+        holdId: session.holdId, seconds: elapsed(),
+      });
+      if (typeof r.balance === 'number') setBalance(r.balance);
+      if (r.exhausted) {
+        toast('Your credits ran out — stopping the stream.');
+        stop();
+      }
+    } catch { /* a missed beat is settled on stop */ }
   }, 20000);
 }
 
@@ -222,7 +231,10 @@ async function start() {
 
     session = { holdId: s.holdId, maxSeconds: s.maxSeconds, perSecond: s.perSecond, startedAt: Date.now() };
     startMeter();
-    toast(`Live — up to ${Math.floor(s.maxSeconds / 60)} min on your balance`);
+    const mins = Math.floor(s.maxSeconds / 60);
+    toast(mins >= 1
+      ? `Live — up to ${mins} min on your balance`
+      : `Live — up to ${s.maxSeconds}s on your balance`);
   } catch (err) {
     console.error(err);
     toast(err.message || 'Could not start the stream.', true);

@@ -49,6 +49,11 @@ case 'start': {
     define('MIN_SESSION_SECS', 10);
     $minCredits = MIN_SESSION_SECS * $perSecond;
 
+    // Seconds of usage held as a deposit while a stream runs. Sized to comfortably
+    // exceed the client's heartbeat interval, so an abandoned session is still
+    // covered for the time it went unreported.
+    define('DEPOSIT_SECS', 60);
+
     // How long can this balance afford? Cap the single-session hold so one
     // session can't lock a huge balance; the client can simply start another.
     $fresh = find_user_by_id($user['id']);
@@ -58,21 +63,33 @@ case 'start': {
             . "credits to start (you have {$fresh['points']}). Please top up.", 402);
     }
 
-    $maxSecs   = max(MIN_SESSION_SECS, min($affordable, 3600));
-    $holdCost  = $maxSecs * $perSecond;
+    // How long the provider will let this session run. The token carries this
+    // as a hard cap, so it also bounds what the customer can ever spend here.
+    $maxSecs = max(MIN_SESSION_SECS, min($affordable, 3600));
 
-    // Debit the full hold atomically, before handing out any token. This must
-    // refuse to overdraft: two concurrent starts would otherwise each debit a
-    // clamped amount and later refund the full hold, minting free credits.
-    $balanceAfter = debit_points($fresh['id'], $holdCost);
+    // Take only a small DEPOSIT up front, not the whole affordable session.
+    // Reserving everything made a 4,600-credit balance read as "2" the instant
+    // the stream started, which looks indistinguishable from being robbed. The
+    // deposit exists purely to cover the last unbilled seconds if the customer
+    // vanishes between heartbeats; live usage is billed incrementally instead.
+    $depositSecs = min(DEPOSIT_SECS, $maxSecs);
+    $deposit     = $depositSecs * $perSecond;
+
+    // Debit atomically, refusing to overdraft: two concurrent starts would
+    // otherwise each debit a clamped amount and later refund in full.
+    $balanceAfter = debit_points($fresh['id'], $deposit);
     if ($balanceAfter === false) json_err('Not enough credits — another session may have just used them.', 402);
     if ($balanceAfter === null)  json_err('Account error.', 500);
 
     $holdId = bin2hex(random_bytes(8));
     $_SESSION['holds'][$holdId] = [
         'model' => $model, 'perSecond' => $perSecond,
-        'held' => $holdCost, 'maxSecs' => $maxSecs,
-        'settled' => 0, 'startedAt' => time(),
+        'deposit' => $deposit, 'maxSecs' => $maxSecs,
+        // `collected` is the cash actually taken from the balance for this
+        // session and starts at the deposit; `billed` is what the elapsed time
+        // says is owed. Settlement returns the difference.
+        'collected' => $deposit, 'billed' => 0,
+        'startedAt' => time(),
     ];
 
     // Token TTL: session length + headroom so it can't expire mid-stream.
@@ -102,7 +119,7 @@ case 'start': {
 
     // Any failure => release the hold immediately, the user spends nothing.
     if ($resp === false) {
-        adjust_points($fresh['id'], $holdCost);
+        adjust_points($fresh['id'], $deposit);
         unset($_SESSION['holds'][$holdId]);
         json_err('Could not reach the AI service: ' . $curlErr, 502);
     }
@@ -112,7 +129,7 @@ case 'start': {
     $clientToken = $tok['apiKey'] ?? $tok['token'] ?? null;
 
     if ($http < 200 || $http >= 300 || !$clientToken) {
-        adjust_points($fresh['id'], $holdCost);
+        adjust_points($fresh['id'], $deposit);
         unset($_SESSION['holds'][$holdId]);
         $detail = $tok['error'] ?? $tok['message'] ?? substr((string)$resp, 0, 200);
         json_err('AI auth failed (' . $http . '): ' . $detail, 502);
@@ -124,7 +141,7 @@ case 'start': {
         'holdId'     => $holdId,
         'maxSeconds' => $maxSecs,
         'perSecond'  => $perSecond,
-        'held'       => $holdCost,
+        'deposit'    => $deposit,
         'balance'    => $balanceAfter,
         'expiresAt'  => $tok['expiresAt'] ?? null,
     ]);
@@ -138,23 +155,45 @@ case 'beat': {
     $hold   = $_SESSION['holds'][$holdId] ?? null;
     if (!$hold) json_out(['ok' => true, 'balance' => $user['points'], 'note' => 'no active hold']);
 
-    // Never bill beyond what was held.
+    // Never bill beyond the cap the provider was given.
     $secs = min($secs, $hold['maxSecs']);
     $due  = $secs * $hold['perSecond'];
 
-    // Charge only the delta not already settled by an earlier heartbeat.
-    $newlyDue = max(0, $due - $hold['settled']);
+    // Bill only what hasn't been billed by an earlier heartbeat, so the balance
+    // ticks down as the stream runs rather than lurching at the end.
+    $newlyDue  = max(0, $due - $hold['billed']);
+    $balance   = (int)$user['points'];
+    $exhausted = false;
 
-    if ($action === 'beat') {
-        $_SESSION['holds'][$holdId]['settled'] = $due;
-        json_out(['ok' => true, 'billedSoFar' => $due]);
+    if ($newlyDue > 0) {
+        $after = debit_points($user['id'], $newlyDue);
+        if ($after !== false && $after !== null) {
+            // Normal path: the increment was paid in full.
+            $took    = $newlyDue;
+            $balance = (int)$after;
+        } else {
+            // Out of credit mid-stream: sweep whatever is left and signal a stop.
+            $took    = $balance;                     // balance before the sweep
+            if ($took > 0) debit_points($user['id'], $took);
+            $balance = 0;
+            $exhausted = true;
+        }
+        $_SESSION['holds'][$holdId]['collected'] = (int)$hold['collected'] + $took;
+        $_SESSION['holds'][$holdId]['billed']    = $due;
     }
 
-    // Stop: refund whatever the session didn't use.
-    $refund = max(0, $hold['held'] - $due);
-    $balance = $user['points'];
+    if ($action === 'beat') {
+        json_out(['ok' => true, 'billedSoFar' => $due, 'balance' => $balance, 'exhausted' => $exhausted]);
+    }
+
+    // Stop: settle up. `collected` is the cash actually taken for this session
+    // (deposit + every increment); anything beyond what was used goes back.
+    // Refunding the deposit blindly would over-refund a session that ran the
+    // balance dry, because the deposit had already paid for real usage.
+    $collected = (int)$_SESSION['holds'][$holdId]['collected'];
+    $refund    = max(0, $collected - $due);
     if ($refund > 0) $balance = adjust_points($user['id'], $refund);
-    if ($due > 0) log_tx($user['id'], 'spend', -$due, "Realtime {$hold['model']} — {$secs}s");
+    if ($due > 0) log_tx($user['id'], 'spend', -min($due, $collected), "Realtime {$hold['model']} — {$secs}s");
     unset($_SESSION['holds'][$holdId]);
 
     // Low-balance nudge
