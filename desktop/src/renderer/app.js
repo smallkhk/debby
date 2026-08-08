@@ -265,12 +265,15 @@ function videoConstraints(model) {
 // ── Reference image ─────────────────────────────────────────────────────────
 // Try-on models need a garment photo, and restyle models accept one as a style
 // reference. It can be set before connecting or swapped mid-stream.
+// index.html and this file ship together, but guard anyway so a mismatched
+// pair degrades instead of aborting the module and blanking the studio.
+const hasRefUi = ['refInput','refDrop','refPreview','refEmpty','refClear'].every((id) => $(id));
 const MAX_REF_BYTES = 10 * 1024 * 1024;
 let refImage = null;
 let refPreviewUrl = null;
 
 async function setRefImage(file) {
-  if (!file) return;
+  if (!file || !hasRefUi) return;
   if (!file.type.startsWith('image/')) return toast('That file is not an image.', true);
   if (file.size > MAX_REF_BYTES) return toast('Reference image must be under 10 MB.', true);
 
@@ -290,6 +293,7 @@ async function setRefImage(file) {
 
 async function clearRefImage() {
   refImage = null;
+  if (!hasRefUi) return;
   if (refPreviewUrl) { URL.revokeObjectURL(refPreviewUrl); refPreviewUrl = null; }
   $('refPreview').removeAttribute('src');
   $('refPreview').hidden = true;
@@ -299,6 +303,7 @@ async function clearRefImage() {
   if (realtimeClient) { try { await realtimeClient.setImage(null); toast('Reference image removed'); } catch {} }
 }
 
+if (hasRefUi) {
 $('refDrop').addEventListener('click', () => $('refInput').click());
 $('refDrop').addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('refInput').click(); }
@@ -310,6 +315,7 @@ $('refClear').addEventListener('click', (e) => { e.stopPropagation(); clearRefIm
 ['dragleave','drop'].forEach((ev) =>
   $('refDrop').addEventListener(ev, (e) => { e.preventDefault(); $('refDrop').classList.remove('drag'); }));
 $('refDrop').addEventListener('drop', (e) => setRefImage(e.dataTransfer?.files?.[0]));
+}
 
 let connectWatchdog = null;
 const CONNECT_TIMEOUT_MS = 45000;

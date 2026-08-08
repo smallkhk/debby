@@ -193,12 +193,17 @@ const refDrop = document.getElementById('refDrop');
 const refPreview = document.getElementById('refPreview');
 const refEmpty = document.getElementById('refEmpty');
 const refClear = document.getElementById('refClear');
+// This file and studio.html are updated together, but they are uploaded one at
+// a time. If the newer script lands first, these elements do not exist yet —
+// and a throw here would abort the whole module, taking the device pickers,
+// model list and presets down with it. Degrade instead.
+const hasRefUi = refInput && refDrop && refPreview && refEmpty && refClear;
 const MAX_REF_BYTES = 10 * 1024 * 1024;
 let refImage = null;
 let refPreviewUrl = null;
 
 async function setRefImage(file) {
-  if (!file) return;
+  if (!file || !hasRefUi) return;
   if (!file.type.startsWith('image/')) return toast('That file is not an image.', true);
   if (file.size > MAX_REF_BYTES) return toast('Reference image must be under 10 MB.', true);
 
@@ -223,6 +228,7 @@ async function setRefImage(file) {
 
 async function clearRefImage() {
   refImage = null;
+  if (!hasRefUi) return;
   if (refPreviewUrl) { URL.revokeObjectURL(refPreviewUrl); refPreviewUrl = null; }
   refPreview.removeAttribute('src');
   refPreview.hidden = true;
@@ -234,17 +240,22 @@ async function clearRefImage() {
   }
 }
 
-refDrop.addEventListener('click', () => refInput.click());
-refDrop.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); refInput.click(); }
-});
-refInput.addEventListener('change', () => setRefImage(refInput.files[0]));
-refClear.addEventListener('click', (e) => { e.stopPropagation(); clearRefImage(); });
-['dragenter', 'dragover'].forEach((ev) =>
-  refDrop.addEventListener(ev, (e) => { e.preventDefault(); refDrop.classList.add('drag'); }));
-['dragleave', 'drop'].forEach((ev) =>
-  refDrop.addEventListener(ev, (e) => { e.preventDefault(); refDrop.classList.remove('drag'); }));
-refDrop.addEventListener('drop', (e) => setRefImage(e.dataTransfer?.files?.[0]));
+if (hasRefUi) {
+  refDrop.addEventListener('click', () => refInput.click());
+  refDrop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); refInput.click(); }
+  });
+  refInput.addEventListener('change', () => setRefImage(refInput.files[0]));
+  refClear.addEventListener('click', (e) => { e.stopPropagation(); clearRefImage(); });
+  ['dragenter', 'dragover'].forEach((ev) =>
+    refDrop.addEventListener(ev, (e) => { e.preventDefault(); refDrop.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach((ev) =>
+    refDrop.addEventListener(ev, (e) => { e.preventDefault(); refDrop.classList.remove('drag'); }));
+  refDrop.addEventListener('drop', (e) => setRefImage(e.dataTransfer?.files?.[0]));
+} else {
+  console.warn('Reference image UI not found — studio.html is out of date. '
+             + 'Upload the matching studio.html to enable try-on.');
+}
 
 // ── Connection watchdog ─────────────────────────────────────────────────────
 // A stalled WebRTC handshake reports nothing at all, so give it a deadline and
