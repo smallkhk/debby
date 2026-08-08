@@ -185,6 +185,39 @@ function stopMeter() {
   tickTimer = beatTimer = null;
 }
 
+// ── Connection watchdog ─────────────────────────────────────────────────────
+// A stalled WebRTC handshake reports nothing at all, so give it a deadline and
+// say what actually tends to cause it instead of hanging on "Connecting…".
+let connectWatchdog = null;
+const CONNECT_TIMEOUT_MS = 45000;
+
+function armConnectWatchdog() {
+  clearConnectWatchdog();
+  connectWatchdog = setTimeout(() => {
+    setStatus('err', 'Could not connect');
+    toast('The AI stream did not start. This is usually a firewall or VPN blocking video traffic, '
+        + 'or the provider being at capacity. Try again, or a different network.', true);
+    stop();
+  }, CONNECT_TIMEOUT_MS);
+}
+function clearConnectWatchdog() {
+  clearTimeout(connectWatchdog);
+  connectWatchdog = null;
+}
+
+// Map SDK error codes to something a customer can act on.
+function friendlyConnectError(err) {
+  const code = err?.code || '';
+  if (code === 'INVALID_API_KEY')  return 'The session token was rejected. Please try starting again.';
+  if (code === 'WEBRTC_ICE_ERROR' || code === 'WEBRTC_TIMEOUT_ERROR')
+    return 'Could not open a video connection. A firewall, VPN or restricted network is usually the cause.';
+  if (code === 'WEBRTC_WEBSOCKET_ERROR' || code === 'WEBRTC_SIGNALING_ERROR')
+    return 'Could not reach the AI service. Check your internet connection.';
+  if (code === 'WEBRTC_SERVER_ERROR')
+    return 'The AI service reported an error. It may be busy — please try again shortly.';
+  return err?.message || 'Could not start the stream.';
+}
+
 // ── Session ─────────────────────────────────────────────────────────────────
 async function start() {
   const modelId = modelSelect.value;
@@ -216,13 +249,38 @@ async function start() {
     // 3. Connect with the short-lived token — never the permanent key.
     setStatus('wait', 'Connecting to AI…');
     const client = createDecartClient({ apiKey: s.apiKey });
+
+    // Without a watchdog the UI can sit on "Connecting to AI…" indefinitely:
+    // connect() can resolve before any video arrives, and a blocked WebRTC
+    // path produces no error at all. Queue updates push the deadline back,
+    // because waiting in line is normal and not a failure.
+    armConnectWatchdog();
+
     realtimeClient = await client.realtime.connect(localStream, {
       model,
       onRemoteStream: (remoteStream) => {
+        clearConnectWatchdog();
         remoteVideo.srcObject = remoteStream;
         remotePlaceholder.style.display = 'none';
         window.__eclipseStream = remoteStream;   // picked up by the OBS window
         setStatus('on', 'Live');
+      },
+      onQueuePosition: ({ position, queueSize }) => {
+        armConnectWatchdog();
+        setStatus('wait', `Waiting in queue — ${position} of ${queueSize}`);
+        remotePlaceholder.textContent =
+          `You're number ${position} in the queue. The stream starts automatically when it's your turn.`;
+      },
+      onConnectionChange: (state) => {
+        if (state === 'connecting')    setStatus('wait', 'Connecting to AI…');
+        if (state === 'connected')     setStatus('wait', 'Connected — starting the model…');
+        if (state === 'generating')  { clearConnectWatchdog(); setStatus('on', 'Live'); }
+        if (state === 'reconnecting')  setStatus('wait', 'Connection dropped — reconnecting…');
+        if (state === 'disconnected' && session) {
+          setStatus('err', 'Disconnected');
+          toast('The AI connection dropped. Stopping.', true);
+          stop();
+        }
       },
       initialState: {
         prompt: { text: promptInput.value.trim() || 'cinematic, high quality', enhance: true },
@@ -237,7 +295,8 @@ async function start() {
       : `Live — up to ${s.maxSeconds}s on your balance`);
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Could not start the stream.', true);
+    clearConnectWatchdog();
+    toast(friendlyConnectError(err), true);
     setStatus('err', 'Error');
     await stop();
   }
@@ -258,6 +317,9 @@ async function stop() {
   const seconds = elapsed();
   const holdId = session?.holdId;
   stopMeter();
+  clearConnectWatchdog();
+  remotePlaceholder.textContent =
+    'The transformed output appears here — this is the feed to capture in OBS.';
 
   try { realtimeClient?.disconnect(); } catch {}
   realtimeClient = null;

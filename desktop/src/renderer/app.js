@@ -261,6 +261,36 @@ function videoConstraints(model) {
   return { ...base, width: w, height: h };
 }
 
+let connectWatchdog = null;
+const CONNECT_TIMEOUT_MS = 45000;
+
+function armConnectWatchdog() {
+  clearConnectWatchdog();
+  connectWatchdog = setTimeout(() => {
+    setStatus('err', 'Could not connect');
+    toast('The AI stream did not start. This is usually a firewall or VPN blocking video traffic, '
+        + 'or the provider being at capacity. Try again, or a different network.', true);
+    stopStream();
+  }, CONNECT_TIMEOUT_MS);
+}
+function clearConnectWatchdog() {
+  clearTimeout(connectWatchdog);
+  connectWatchdog = null;
+}
+
+// Map SDK error codes to something a customer can act on.
+function friendlyConnectError(err) {
+  const code = err?.code || '';
+  if (code === 'INVALID_API_KEY') return 'The session token was rejected. Please try starting again.';
+  if (code === 'WEBRTC_ICE_ERROR' || code === 'WEBRTC_TIMEOUT_ERROR')
+    return 'Could not open a video connection. A firewall, VPN or restricted network is usually the cause.';
+  if (code === 'WEBRTC_WEBSOCKET_ERROR' || code === 'WEBRTC_SIGNALING_ERROR')
+    return 'Could not reach the AI service. Check your internet connection.';
+  if (code === 'WEBRTC_SERVER_ERROR')
+    return 'The AI service reported an error. It may be busy — please try again shortly.';
+  return err?.message || 'Could not start the stream.';
+}
+
 async function startStream() {
   const modelId = $('modelSelect').value;
   if (!modelId || session) return;
@@ -284,13 +314,37 @@ async function startStream() {
 
     setStatus('wait', 'Connecting to AI…');
     const client = createDecartClient({ apiKey: s.apiKey });
+
+    // A stalled WebRTC handshake reports nothing at all, so give it a deadline
+    // rather than sitting on "Connecting…" forever. Queue updates push the
+    // deadline back, because waiting in line is normal, not a failure.
+    armConnectWatchdog();
+
     realtimeClient = await client.realtime.connect(localStream, {
       model,
       onRemoteStream: (remote) => {
+        clearConnectWatchdog();
         $('remoteVideo').srcObject = remote;
         $('remotePlaceholder').style.display = 'none';
         window.__eclipseStream = remote;   // read by the OBS output window
         setStatus('on', 'Live');
+      },
+      onQueuePosition: ({ position, queueSize }) => {
+        armConnectWatchdog();
+        setStatus('wait', `Waiting in queue — ${position} of ${queueSize}`);
+        $('remotePlaceholder').textContent =
+          `You're number ${position} in the queue. The stream starts automatically when it's your turn.`;
+      },
+      onConnectionChange: (state) => {
+        if (state === 'connecting')   setStatus('wait', 'Connecting to AI…');
+        if (state === 'connected')    setStatus('wait', 'Connected — starting the model…');
+        if (state === 'generating') { clearConnectWatchdog(); setStatus('on', 'Live'); }
+        if (state === 'reconnecting') setStatus('wait', 'Connection dropped — reconnecting…');
+        if (state === 'disconnected' && session) {
+          setStatus('err', 'Disconnected');
+          toast('The AI connection dropped. Stopping.', true);
+          stopStream();
+        }
       },
       initialState: {
         prompt: { text: $('promptInput').value.trim() || 'cinematic, high quality', enhance: true },
@@ -303,7 +357,8 @@ async function startStream() {
     toast(mins >= 1 ? `Live — up to ${mins} min on your balance` : `Live — up to ${s.maxSeconds}s`);
   } catch (err) {
     console.error(err);
-    toast(err.message || 'Could not start.', true);
+    clearConnectWatchdog();
+    toast(friendlyConnectError(err), true);
     setStatus('err', 'Error');
     await stopStream();
   }
@@ -347,6 +402,8 @@ async function stopStream() {
 
   clearInterval(tickTimer); clearInterval(beatTimer);
   tickTimer = beatTimer = null;
+  clearConnectWatchdog();
+  $('remotePlaceholder').textContent = 'The transformed output — capture this in OBS';
   if (recorder && recorder.state !== 'inactive') stopRecording();
 
   try { realtimeClient?.disconnect(); } catch {}
