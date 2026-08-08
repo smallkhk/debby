@@ -31,6 +31,19 @@
     </div>
 
     <div class="field">
+      <label for="refInput">Reference image</label>
+      <input type="file" id="refInput" accept="image/*" hidden />
+      <div class="refimg" id="refDrop" tabindex="0" role="button" aria-label="Choose a reference image">
+        <img id="refPreview" alt="" hidden />
+        <div class="refimg-empty" id="refEmpty">
+          <b>Click or drop an image</b>
+          <span>The outfit for try-on, or a style to copy</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm hidden" id="refClear" style="align-self:flex-start">Remove image</button>
+    </div>
+
+    <div class="field">
       <label>Prompt</label>
       <textarea id="promptInput" placeholder="Describe the look… e.g. 'cyberpunk neon city, cinematic lighting'"></textarea>
       <button class="btn btn-ghost btn-sm" id="applyPrompt" style="align-self:flex-start">Apply prompt</button>

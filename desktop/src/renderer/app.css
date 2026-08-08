@@ -181,3 +181,16 @@ a:hover { text-decoration: underline; }
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast.error { border-color: rgba(248,113,113,.45); }
+
+/* ── Reference image picker ───────────────────────────────────────────────── */
+.refimg {
+  position: relative; display: grid; place-items: center; min-height: 86px;
+  border: 1px dashed var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-elev-2); cursor: pointer; overflow: hidden;
+  transition: border-color .15s, background .15s;
+}
+.refimg:hover, .refimg:focus-visible, .refimg.drag { border-color: var(--brand); background: #171b2b; outline: none; }
+.refimg img { width: 100%; max-height: 170px; object-fit: contain; display: block; background: #000; }
+.refimg-empty { text-align: center; padding: 14px 10px; pointer-events: none; }
+.refimg-empty b { display: block; font-size: .83rem; color: var(--text-dim); font-weight: 600; }
+.refimg-empty span { display: block; font-size: .74rem; color: var(--text-faint); margin-top: 3px; }

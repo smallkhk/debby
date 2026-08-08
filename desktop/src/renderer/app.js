@@ -261,6 +261,56 @@ function videoConstraints(model) {
   return { ...base, width: w, height: h };
 }
 
+
+// ── Reference image ─────────────────────────────────────────────────────────
+// Try-on models need a garment photo, and restyle models accept one as a style
+// reference. It can be set before connecting or swapped mid-stream.
+const MAX_REF_BYTES = 10 * 1024 * 1024;
+let refImage = null;
+let refPreviewUrl = null;
+
+async function setRefImage(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) return toast('That file is not an image.', true);
+  if (file.size > MAX_REF_BYTES) return toast('Reference image must be under 10 MB.', true);
+
+  refImage = file;
+  if (refPreviewUrl) URL.revokeObjectURL(refPreviewUrl);
+  refPreviewUrl = URL.createObjectURL(file);
+  $('refPreview').src = refPreviewUrl;
+  $('refPreview').hidden = false;
+  $('refEmpty').classList.add('hidden');
+  $('refClear').classList.remove('hidden');
+
+  if (realtimeClient) {
+    try { await realtimeClient.setImage(file); toast('Reference image applied'); }
+    catch { toast('Could not apply the reference image.', true); }
+  }
+}
+
+async function clearRefImage() {
+  refImage = null;
+  if (refPreviewUrl) { URL.revokeObjectURL(refPreviewUrl); refPreviewUrl = null; }
+  $('refPreview').removeAttribute('src');
+  $('refPreview').hidden = true;
+  $('refEmpty').classList.remove('hidden');
+  $('refClear').classList.add('hidden');
+  $('refInput').value = '';
+  if (realtimeClient) { try { await realtimeClient.setImage(null); toast('Reference image removed'); } catch {} }
+}
+
+$('refDrop').addEventListener('click', () => $('refInput').click());
+$('refDrop').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('refInput').click(); }
+});
+$('refInput').addEventListener('change', () => setRefImage($('refInput').files[0]));
+$('refClear').addEventListener('click', (e) => { e.stopPropagation(); clearRefImage(); });
+['dragenter','dragover'].forEach((ev) =>
+  $('refDrop').addEventListener(ev, (e) => { e.preventDefault(); $('refDrop').classList.add('drag'); }));
+['dragleave','drop'].forEach((ev) =>
+  $('refDrop').addEventListener(ev, (e) => { e.preventDefault(); $('refDrop').classList.remove('drag'); }));
+$('refDrop').addEventListener('drop', (e) => setRefImage(e.dataTransfer?.files?.[0]));
+
 let connectWatchdog = null;
 const CONNECT_TIMEOUT_MS = 45000;
 
@@ -294,6 +344,14 @@ function friendlyConnectError(err) {
 async function startStream() {
   const modelId = $('modelSelect').value;
   if (!modelId || session) return;
+
+  // Try-on has nothing to put on you without a garment photo. Blocking here
+  // beats letting the customer spend credits on a session that cannot work.
+  if (/vton/i.test(modelId) && !refImage) {
+    toast('Try-on needs a reference image — add the outfit photo first.', true);
+    $('refDrop').focus();
+    return;
+  }
 
   setLive(true);
   setStatus('wait', 'Reserving credits…');
@@ -348,6 +406,7 @@ async function startStream() {
       },
       initialState: {
         prompt: { text: $('promptInput').value.trim() || 'cinematic, high quality', enhance: true },
+        ...(refImage ? { image: refImage } : {}),
       },
     });
 
