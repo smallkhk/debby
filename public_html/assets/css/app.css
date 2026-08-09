@@ -388,14 +388,3 @@ td.mono, .mono { font-family: var(--mono); font-size: 0.84em; }
 .plan-feats li { list-style: none; }
 .plan-feats li::before { content: "✓ "; color: var(--brand-2); font-weight: 700; }
 
-.custom-row {
-  margin-top: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  background: var(--bg-elev); border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm); padding: 14px 18px;
-}
-.custom-row label { font-size: .84rem; color: var(--text-dim); font-weight: 600; }
-.custom-row input {
-  width: 150px; padding: 9px 12px; border-radius: var(--radius-sm); background: var(--bg-elev-2);
-  border: 1px solid var(--border); color: var(--text); font-family: var(--font); outline: none;
-}
-.custom-row input:focus { border-color: var(--brand); }

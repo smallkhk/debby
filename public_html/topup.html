@@ -20,11 +20,6 @@
 
 <div class="wrap" style="padding-bottom:48px">
   <div class="plan-grid" id="pkgGrid"></div>
-  <div class="custom-row">
-    <label for="customUsdt">Or enter your own amount</label>
-    <input id="customUsdt" type="number" step="0.01" min="0" placeholder="e.g. 75" />
-    <span class="hint" id="customCredits"></span>
-  </div>
 </div>
 
 <div class="wrap page" style="padding-top:0">
@@ -202,18 +197,17 @@ function buildPackages() {
         `<li>Credits never expire</li>` +
       `</ul>`;
     b.addEventListener('click', () => {
-      selectAmount(p.usdt, true);
+      selectAmount(p.usdt);
       document.getElementById('paySummary').scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
     grid.appendChild(b);
   });
 }
 
-function selectAmount(usdt, fromTile) {
+function selectAmount(usdt) {
   chosenUsdt = Number(usdt) || 0;
   document.querySelectorAll('.plan-card').forEach((el) =>
     el.classList.toggle('active', Number(el.dataset.usdt) === chosenUsdt));
-  if (fromTile) S('customUsdt').value = '';
 
   const credits = creditsFor(chosenUsdt);
   const bonus = bonusFor(chosenUsdt);
@@ -231,14 +225,6 @@ function selectAmount(usdt, fromTile) {
   }
 }
 
-S('customUsdt').addEventListener('input', () => {
-  const v = parseFloat(S('customUsdt').value);
-  document.querySelectorAll('.plan-card').forEach((el) => el.classList.remove('active'));
-  const amount = Number.isFinite(v) ? v : 0;
-  selectAmount(amount, false);
-  const c = creditsFor(amount);
-  S('customCredits').textContent = amount ? `${c.toLocaleString()} credits · ${liveTime(c)}` : '';
-});
 
 async function loadHistory() {
   try {
