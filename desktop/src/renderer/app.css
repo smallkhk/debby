@@ -66,7 +66,8 @@ a:hover { text-decoration: underline; }
   font-family: var(--font); font-size: .92rem; outline: none;
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--brand); }
-.field textarea { resize: vertical; min-height: 64px; }
+/* Tall enough to show the default character-swap prompt without scrolling. */
+.field textarea { resize: vertical; min-height: 88px; }
 .hint { font-size: .76rem; color: var(--text-faint); }
 
 .btn {

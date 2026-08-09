@@ -36,7 +36,14 @@ let tickTimer = null;
 let beatTimer = null;
 let modelCatalog = [];
 
+// What the box says before anyone types. Character swap is what most sessions
+// are actually for, so it is the prompt you get for free — start the stream
+// with a reference image and it just works, no typing.
+const DEFAULT_PROMPT =
+  'Transform the character in the video into the character from the reference image';
+
 const PRESETS = [
+  { label: 'Character swap', prompt: DEFAULT_PROMPT },
   { label: 'Anime', prompt: 'anime style, vibrant cel shading, expressive eyes' },
   { label: 'Cyberpunk', prompt: 'cyberpunk neon city, rain, cinematic lighting, teal and magenta' },
   { label: 'Claymation', prompt: 'claymation character, soft studio light, stop-motion look' },
@@ -135,9 +142,13 @@ async function loadModels() {
 }
 
 function buildPresets() {
+  // Belt and braces with the value baked into studio.html: the two files are
+  // uploaded separately, so whichever lands first still fills the box.
+  if (!promptInput.value.trim()) promptInput.value = DEFAULT_PROMPT;
+
   PRESETS.forEach((p) => {
     const chip = document.createElement('button');
-    chip.className = 'chip';
+    chip.className = 'chip' + (p.prompt === promptInput.value.trim() ? ' active' : '');
     chip.type = 'button';
     chip.textContent = p.label;
     chip.addEventListener('click', () => {

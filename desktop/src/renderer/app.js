@@ -22,7 +22,14 @@ let beatTimer = null;
 let currentUser = null;
 let config = { serverUrl: '', deviceToken: '' };
 
+// What the box says before anyone types. Character swap is what most sessions
+// are actually for, so it is the prompt you get for free — start the stream
+// with a reference image and it just works, no typing.
+const DEFAULT_PROMPT =
+  'Transform the character in the video into the character from the reference image';
+
 const PRESETS = [
+  ['Character swap', DEFAULT_PROMPT],
   ['Anime', 'anime style, vibrant cel shading, expressive eyes'],
   ['Cyberpunk', 'cyberpunk neon city, rain, cinematic lighting, teal and magenta'],
   ['Claymation', 'claymation character, soft studio light, stop-motion look'],
@@ -189,9 +196,11 @@ async function enterStudio() {
 function buildPresets() {
   const host = $('presets');
   if (host.childElementCount) return;
+  if (!$('promptInput').value.trim()) $('promptInput').value = DEFAULT_PROMPT;
+
   PRESETS.forEach(([label, prompt]) => {
     const b = document.createElement('button');
-    b.className = 'chip-preset';
+    b.className = 'chip-preset' + (prompt === $('promptInput').value.trim() ? ' active' : '');
     b.textContent = label;
     b.addEventListener('click', () => {
       host.querySelectorAll('.chip-preset').forEach((c) => c.classList.remove('active'));
