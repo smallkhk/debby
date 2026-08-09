@@ -1,0 +1,7 @@
+# Live data stores — these are the database. Never commit them: they hold the
+# Decart API key, password hashes, balances, payments and device tokens.
+public_html/data/*.json
+public_html/data/tmp/
+
+*.log
+.DS_Store

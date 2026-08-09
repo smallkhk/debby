@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Log in — Eclipse Creator Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css?v=202608091040" />
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="brand" href="/" style="margin-bottom:22px"><span class="logo"></span> Eclipse</a>
+    <h1>Welcome back</h1>
+    <p class="sub">Log in to open the Studio.</p>
+    <div id="err"></div>
+    <form id="form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+      </div>
+      <button class="btn btn-primary btn-block" id="btn" type="submit">Log in</button>
+    </form>
+    <div class="auth-foot" style="margin-top:14px"><a href="/forgot.html">Forgot your password?</a></div>
+    <div class="auth-foot">New here? <a href="/register.html">Create an account</a></div>
+    <div class="auth-foot faint" style="margin-top:6px;font-size:.82rem">
+      <a href="/index.html">What is Eclipse? See features &amp; pricing</a>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/app.js?v=202608091040"></script>
+<script>
+document.getElementById('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = 'Logging in…';
+  document.getElementById('err').innerHTML = '';
+  try {
+    await API.post('/api/auth.php?action=login', {
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+    });
+    const next = new URLSearchParams(location.search).get('next');
+    // Only follow same-site paths — never an attacker-supplied absolute URL.
+    location.href = (next && next.startsWith('/') && !next.startsWith('//')) ? next : '/studio.html';
+  } catch (err) {
+    document.getElementById('err').innerHTML = `<div class="alert alert-err">${esc(err.message)}</div>`;
+    btn.disabled = false; btn.textContent = 'Log in';
+  }
+});
+</script>
+</body>
+</html>

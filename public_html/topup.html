@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Top up — Eclipse Creator Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css?v=202608091040" />
+</head>
+<body>
+<nav class="nav" id="nav"></nav>
+
+<header class="pricing-hero">
+  <div class="wrap">
+    <div class="eyebrow">Pricing</div>
+    <h1 class="pricing-title">Simple <span class="grad-text">Credit Packages</span></h1>
+    <p class="pricing-sub">Pay as you go. Credits never expire. Use them on any model whenever you want.</p>
+  </div>
+</header>
+
+<div class="wrap" style="padding-bottom:48px">
+  <div class="plan-grid" id="pkgGrid"></div>
+</div>
+
+<div class="wrap page" style="padding-top:0">
+  <div class="grid grid-2">
+    <div>
+
+      <div class="card" style="margin-bottom:18px">
+        <h3 style="margin-bottom:14px">Send USDT</h3>
+        <div class="pay-summary" id="paySummary">
+          <div class="pay-row"><span class="muted">Send exactly</span><b id="sendAmount">—</b></div>
+          <div class="pay-row"><span class="muted">You receive</span><b id="getCredits">—</b></div>
+          <div class="pay-bonus hidden" id="payBonus"></div>
+        </div>
+        <div class="field">
+          <label for="network">Network</label>
+          <select id="network">
+            <option value="bsc">BNB Smart Chain (BEP-20)</option>
+            <option value="tron">Tron (TRC-20)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Send to this address</label>
+          <div class="qr-row">
+            <div class="qr-box" id="qrBox" aria-label="Wallet address QR code"></div>
+            <div class="qr-side">
+              <div class="net-badge" id="netBadge">—</div>
+              <div class="copy-box">
+                <span id="addr" style="flex:1">Loading…</span>
+              </div>
+              <button class="btn btn-ghost btn-sm" id="copyBtn" type="button">Copy address</button>
+            </div>
+          </div>
+          <span class="hint" id="rateHint"></span>
+        </div>
+        <div class="alert alert-warn" style="margin-bottom:0">
+          Send <b>only USDT</b> on the network selected above. Coins sent on the wrong
+          network, or a different token, cannot be recovered or credited.
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:14px">Submit your transaction</h3>
+        <div id="err"></div>
+        <form id="form">
+          <div class="field">
+            <label for="txid">Transaction hash (TXID)</label>
+            <input id="txid" type="text" placeholder="0x… or Tron tx hash" required />
+          </div>
+          <div class="field">
+            <label for="usdt">Amount sent (USDT)</label>
+            <input id="usdt" type="number" step="0.01" min="0" required />
+          </div>
+          <button class="btn btn-primary btn-block" id="btn" type="submit">Verify &amp; add credits</button>
+        </form>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3 style="margin-bottom:14px">Your payments</h3>
+        <div id="history" class="muted" style="font-size:.9rem">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/vendor/qrcode.js?v=202608091040"></script>
+<script src="/assets/js/app.js?v=202608091040"></script>
+<script>
+let info = null;
+const S = (id) => document.getElementById(id);
+
+const NET_LABEL = {
+  bsc:  'BNB Smart Chain · BEP-20',
+  tron: 'Tron · TRC-20',
+};
+
+function renderAddress() {
+  if (!info) return;
+  const net = S('network').value;
+  const addr = net === 'bsc' ? info.bscAddress : info.tronAddress;
+  S('netBadge').textContent = NET_LABEL[net] || net.toUpperCase();
+  S('addr').textContent = addr || 'Not configured — contact support';
+  S('rateHint').textContent =
+    `${info.pointsPerUsdt} credits per USDT · minimum ${info.minUsdt} USDT`;
+  renderQr(addr);
+}
+
+// The QR encodes the bare address, not a payment URI: wallet apps differ on
+// which URI schemes they accept, and an address every scanner can read beats
+// a richer link that some silently reject.
+function renderQr(addr) {
+  const box = S('qrBox');
+  box.innerHTML = '';
+  if (!addr) {
+    box.innerHTML = '<div class="qr-none">No wallet set for this network</div>';
+    return;
+  }
+  if (typeof qrcode !== 'function') {
+    box.innerHTML = '<div class="qr-none">QR unavailable — use the address</div>';
+    return;
+  }
+  try {
+    const q = qrcode(0, 'M');       // 0 = auto-size, M = ~15% error correction
+    q.addData(addr);
+    q.make();
+    box.innerHTML = q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  } catch {
+    box.innerHTML = '<div class="qr-none">QR unavailable — use the address</div>';
+  }
+}
+
+
+// ── Packages ────────────────────────────────────────────────────────────────
+// The credit figures shown here mirror credits_for_usdt() on the server, which
+// is the authority. If they ever disagree, the customer is credited what the
+// server decides — so this is presentation only, never the source of truth.
+let chosenUsdt = 0;
+
+function creditsFor(usdt) {
+  if (!info || !usdt) return 0;
+  let bonus = 0;
+  for (const p of (info.packages || [])) {
+    if (p.usdt > 0 && usdt + 0.01 >= p.usdt) bonus = Math.max(bonus, p.bonusPct || 0);
+  }
+  // Same scaling as credits_for_usdt() on the server, so the quoted figure and
+  // the credited figure agree exactly rather than differing by float dust.
+  return Math.floor(usdt * info.pointsPerUsdt * (100 + bonus) / 100 + 1e-9);
+}
+
+function bonusFor(usdt) {
+  if (!info || !usdt) return 0;
+  let bonus = 0;
+  for (const p of (info.packages || [])) {
+    if (p.usdt > 0 && usdt + 0.01 >= p.usdt) bonus = Math.max(bonus, p.bonusPct || 0);
+  }
+  return bonus;
+}
+
+// Live time is quoted at the DEAREST realtime model, so the figure is the
+// worst case a customer can hit. Quoting the cheapest would promise minutes
+// that vanish the moment they pick a pricier model.
+let perSecondMax = 0;
+let realtimeCount = 0;
+
+function liveTime(credits) {
+  if (!perSecondMax || !credits) return '';
+  const secs = Math.floor(credits / perSecondMax);
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), sec = secs % 60;
+  if (h) return `${h}h ${m}m live time`;
+  if (m) return `${m}m ${sec}s live time`;
+  return `${sec}s live time`;
+}
+
+function buildPackages() {
+  const grid = S('pkgGrid');
+  const pkgs = (info.packages || []).filter((p) => p.usdt > 0);
+  if (!pkgs.length) { grid.parentElement.classList.add('hidden'); return; }
+  grid.innerHTML = '';
+  pkgs.forEach((p) => {
+    const credits = creditsFor(p.usdt);
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'plan-card' + (p.tag ? ' featured' : '');
+    b.dataset.usdt = p.usdt;
+    b.innerHTML =
+      (p.tag ? `<span class="plan-tag">${esc(p.tag)}</span>` : '') +
+      `<div class="plan-credits">${credits.toLocaleString()}</div>` +
+      `<div class="plan-price">$${esc(p.usdt)} USDT</div>` +
+      `<div class="plan-time">${liveTime(credits)}</div>` +
+      (p.bonusPct ? `<div class="plan-bonus">+${esc(p.bonusPct)}% bonus credits</div>` : '') +
+      `<ul class="plan-feats">` +
+        `<li>All ${realtimeCount} live AI models</li>` +
+        `<li>Real-time transformation</li>` +
+        `<li>Credits never expire</li>` +
+      `</ul>`;
+    b.addEventListener('click', () => {
+      selectAmount(p.usdt);
+      document.getElementById('paySummary').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    grid.appendChild(b);
+  });
+}
+
+function selectAmount(usdt) {
+  chosenUsdt = Number(usdt) || 0;
+  document.querySelectorAll('.plan-card').forEach((el) =>
+    el.classList.toggle('active', Number(el.dataset.usdt) === chosenUsdt));
+
+  const credits = creditsFor(chosenUsdt);
+  const bonus = bonusFor(chosenUsdt);
+  S('sendAmount').textContent = chosenUsdt ? `${chosenUsdt} USDT` : '—';
+  S('getCredits').textContent = chosenUsdt ? `${credits.toLocaleString()} credits` : '—';
+  S('payBonus').classList.toggle('hidden', !bonus || !chosenUsdt);
+  if (bonus && chosenUsdt) S('payBonus').textContent = `Includes a ${bonus}% bonus`;
+
+  // Pre-fill step 3 so the customer isn't retyping what they just chose.
+  if (chosenUsdt) S('usdt').value = chosenUsdt;
+
+  if (chosenUsdt && chosenUsdt < info.minUsdt) {
+    S('payBonus').classList.remove('hidden');
+    S('payBonus').textContent = `Below the ${info.minUsdt} USDT minimum — this will be rejected.`;
+  }
+}
+
+
+async function loadHistory() {
+  try {
+    const { payments } = await API.get('/api/payments.php?action=mine');
+    if (!payments.length) { S('history').textContent = 'No payments yet.'; return; }
+    S('history').innerHTML = payments.map((p) => {
+      const cls = p.status === 'approved' ? 'tag-ok' : p.status === 'pending' ? 'tag-pend' : 'tag-bad';
+      return `<div style="padding:11px 0;border-bottom:1px solid var(--border-soft)">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+          <b>${esc(p.usdtVerified ?? p.usdtClaimed)} USDT</b>
+          <span class="tag ${cls}">${esc(p.status)}</span>
+        </div>
+        <div class="mono faint" style="margin-top:4px;word-break:break-all">${esc(p.txid)}</div>
+        ${p.points ? `<div style="color:var(--good);font-size:.85rem;margin-top:3px">+${p.points} credits</div>` : ''}
+        ${p.status === 'pending' && p.reason ? `<div class="faint" style="font-size:.8rem;margin-top:3px">${esc(p.reason)}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch { S('history').textContent = 'Could not load your payments.'; }
+}
+
+S('network').addEventListener('change', renderAddress);
+S('copyBtn').addEventListener('click', () => {
+  const a = S('addr').textContent;
+  if (a && !a.startsWith('Not configured')) copyText(a, 'Address copied');
+});
+
+S('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = S('btn');
+  btn.disabled = true; btn.textContent = 'Verifying on-chain…';
+  S('err').innerHTML = '';
+  try {
+    const r = await API.post('/api/payments.php?action=submit', {
+      network: S('network').value,
+      txid: S('txid').value.trim(),
+      usdt: parseFloat(S('usdt').value),
+    });
+    setBalance(r.balance);
+    toast(r.message || 'Credits added!');
+    S('form').reset();
+    loadHistory();
+  } catch (err) {
+    S('err').innerHTML = `<div class="alert ${err.data?.status === 'pending' ? 'alert-warn' : 'alert-err'}">${esc(err.message)}</div>`;
+    loadHistory();
+  }
+  btn.disabled = false; btn.textContent = 'Verify & add credits';
+});
+
+(async function init() {
+  await mountNav('topup');
+  if (!(await requireUser())) return;
+  const [r, m] = await Promise.all([
+    API.get('/api/payments.php?action=info'),
+    API.get('/api/job.php?action=models').catch(() => ({ models: [] })),
+  ]);
+  info = r.info;
+  const realtime = (m.models || []).filter((x) => x.type === 'realtime');
+  realtimeCount = realtime.length;
+  perSecondMax = realtime.reduce((a, x) => Math.max(a, x.perSecond || 0), 0);
+  buildPackages();
+  renderAddress();
+  loadHistory();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reset your password — Eclipse Creator Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css?v=202608091040" />
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="brand" href="/" style="margin-bottom:22px"><span class="logo"></span> Eclipse</a>
+    <div id="err"></div>
+
+    <div id="step1">
+      <h1>Reset your password</h1>
+      <p class="sub">We'll email you a 6-digit code.</p>
+      <form id="form1">
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" required />
+        </div>
+        <button class="btn btn-primary btn-block" id="btn1" type="submit">Send reset code</button>
+      </form>
+      <div class="auth-foot"><a href="/login.html">← Back to login</a></div>
+    </div>
+
+    <div id="step2" class="hidden">
+      <h1>Enter the code</h1>
+      <p class="sub">Sent to <b id="emailEcho"></b>.</p>
+      <form id="form2">
+        <div class="field">
+          <label for="otp">Reset code</label>
+          <input id="otp" class="otp-input" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+        </div>
+        <button class="btn btn-primary btn-block" id="btn2" type="submit">Verify code</button>
+      </form>
+    </div>
+
+    <div id="step3" class="hidden">
+      <h1>Choose a new password</h1>
+      <p class="sub">Make it at least 6 characters.</p>
+      <form id="form3">
+        <div class="field">
+          <label for="pw">New password</label>
+          <input id="pw" type="password" autocomplete="new-password" minlength="6" required />
+        </div>
+        <button class="btn btn-primary btn-block" id="btn3" type="submit">Set new password</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/app.js?v=202608091040"></script>
+<script>
+let email = '', token = '';
+const S = (id) => document.getElementById(id);
+const showErr = (m) => S('err').innerHTML = m ? `<div class="alert alert-err">${esc(m)}</div>` : '';
+
+S('form1').addEventListener('submit', async (e) => {
+  e.preventDefault(); showErr('');
+  const b = S('btn1'); b.disabled = true; b.textContent = 'Sending…';
+  email = S('email').value.trim();
+  try {
+    await API.post('/api/auth.php?action=forgot_password', { email });
+    S('emailEcho').textContent = email;
+    S('step1').classList.add('hidden'); S('step2').classList.remove('hidden');
+  } catch (err) { showErr(err.message); }
+  b.disabled = false; b.textContent = 'Send reset code';
+});
+
+S('form2').addEventListener('submit', async (e) => {
+  e.preventDefault(); showErr('');
+  const b = S('btn2'); b.disabled = true; b.textContent = 'Verifying…';
+  try {
+    const r = await API.post('/api/auth.php?action=verify_reset_otp', { email, otp: S('otp').value.trim() });
+    token = r.token;
+    S('step2').classList.add('hidden'); S('step3').classList.remove('hidden');
+  } catch (err) { showErr(err.message); }
+  b.disabled = false; b.textContent = 'Verify code';
+});
+
+S('form3').addEventListener('submit', async (e) => {
+  e.preventDefault(); showErr('');
+  const b = S('btn3'); b.disabled = true; b.textContent = 'Saving…';
+  try {
+    await API.post('/api/auth.php?action=reset_password', { email, token, password: S('pw').value });
+    location.href = '/login.html';
+  } catch (err) { showErr(err.message); b.disabled = false; b.textContent = 'Set new password'; }
+});
+</script>
+</body>
+</html>

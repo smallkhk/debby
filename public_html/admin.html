@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Admin — Eclipse Creator Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css?v=202608091040" />
+</head>
+<body>
+
+<!-- ── Gate ─────────────────────────────────────────────────────────────── -->
+<div class="auth-wrap" id="gate">
+  <div class="auth-card">
+    <a class="brand" href="/" style="margin-bottom:22px"><span class="logo"></span> Eclipse Admin</a>
+    <div id="gateErr"></div>
+
+    <div id="claimBox" class="hidden">
+      <h1>Set up admin access</h1>
+      <p class="sub">No admin password is set yet. Claim it now — this can only be done once.</p>
+      <form id="claimForm">
+        <div class="field"><label for="cu">Admin username</label><input id="cu" type="text" value="admin" required /></div>
+        <div class="field">
+          <label for="cp">Admin password</label>
+          <input id="cp" type="password" minlength="8" required />
+          <span class="hint">At least 8 characters. Stored as a bcrypt hash.</span>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Claim admin account</button>
+      </form>
+    </div>
+
+    <div id="loginBox" class="hidden">
+      <h1>Admin sign-in</h1>
+      <p class="sub">Restricted area.</p>
+      <form id="loginForm">
+        <div class="field"><label for="lu">Username</label><input id="lu" type="text" autocomplete="username" required /></div>
+        <div class="field"><label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password" required /></div>
+        <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Panel ────────────────────────────────────────────────────────────── -->
+<div id="panel" class="hidden">
+<nav class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="/"><span class="logo"></span> Eclipse Admin</a>
+    <div class="nav-links">
+      <a href="/" class="hide-sm">View site</a>
+      <button class="btn btn-ghost btn-sm" id="adminLogout">Sign out</button>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap page">
+  <div class="stat-grid" id="stats"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="settings">Settings</button>
+    <button class="tab" data-tab="users">Users</button>
+    <button class="tab" data-tab="payments">Payments</button>
+    <button class="tab" data-tab="keys">Desktop keys</button>
+  </div>
+
+  <!-- Settings -->
+  <section id="tab-settings">
+    <div class="grid grid-2">
+      <div class="card">
+        <h3 style="margin-bottom:16px">AI provider</h3>
+        <div class="field">
+          <label for="sApiKey">Decart API key</label>
+          <input id="sApiKey" type="password" placeholder="Leave blank to keep current" autocomplete="off" />
+          <span class="hint" id="apiKeyState"></span>
+        </div>
+        <div class="field">
+          <label for="sOrigins">Allowed origins (one per line)</label>
+          <textarea id="sOrigins" placeholder="https://yourdomain.com"></textarea>
+          <span class="hint">Locks minted tokens to your domains. Leave blank to allow any.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:16px">Credits &amp; pricing</h3>
+        <div class="field"><label for="sBonus">Signup bonus (credits)</label><input id="sBonus" type="number" min="0" /></div>
+        <div class="field"><label for="sRate">Credits per USDT</label><input id="sRate" type="number" min="1" /></div>
+        <div class="field"><label for="sMin">Minimum top-up (USDT)</label><input id="sMin" type="number" min="1" step="0.01" /></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:6px">Top-up packages</h3>
+        <p class="hint" style="margin:0 0 14px">What customers pick before paying. The bonus is applied
+        server-side when a payment clears, so the page can't promise more than you actually grant.</p>
+        <div id="pkgRows"></div>
+        <button class="btn btn-ghost btn-sm" id="addPkg" type="button">+ Add package</button>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:16px">Receiving wallets</h3>
+        <div class="field"><label for="sBsc">BSC (BEP-20) address</label><input id="sBsc" type="text" /></div>
+        <div class="field"><label for="sTron">Tron (TRC-20) address</label><input id="sTron" type="text" /></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:16px">Email (SMTP)</h3>
+        <div class="field"><label for="sHost">SMTP host</label><input id="sHost" type="text" /></div>
+        <div class="grid grid-2" style="gap:12px">
+          <div class="field"><label for="sPort">Port</label><input id="sPort" type="number" /></div>
+          <div class="field"><label for="sSecure">Security</label>
+            <select id="sSecure"><option value="tls">TLS</option><option value="ssl">SSL</option><option value="none">None</option></select>
+          </div>
+        </div>
+        <div class="field"><label for="sUser">Username</label><input id="sUser" type="text" autocomplete="off" /></div>
+        <div class="field"><label for="sPass">Password</label><input id="sPass" type="password" placeholder="Leave blank to keep current" autocomplete="off" /><span class="hint" id="smtpPassState"></span></div>
+        <div class="field"><label for="sFrom">From address</label><input id="sFrom" type="email" /></div>
+        <div class="field"><label for="sNotify">Admin alert email</label><input id="sNotify" type="email" /></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:16px">Model pricing</h3>
+        <div id="costsBox"></div>
+        <span class="hint">Realtime models bill per second; batch models bill a flat rate per job.</span>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:16px">Change admin password</h3>
+        <div class="field">
+          <label for="sAdminPass">New admin password</label>
+          <input id="sAdminPass" type="password" placeholder="Leave blank to keep current" autocomplete="new-password" />
+          <span class="hint">Minimum 8 characters.</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:22px"><button class="btn btn-primary" id="saveSettings">Save all settings</button></div>
+  </section>
+
+  <!-- Users -->
+  <section id="tab-users" class="hidden">
+    <div class="table-wrap"><table>
+      <thead><tr><th>User</th><th>Credits</th><th>Joined</th><th>Status</th><th></th></tr></thead>
+      <tbody id="usersBody"></tbody>
+    </table></div>
+  </section>
+
+  <!-- Payments -->
+  <section id="tab-payments" class="hidden">
+    <div class="table-wrap"><table>
+      <thead><tr><th>User</th><th>Amount</th><th>Network</th><th>TXID</th><th>Status</th><th></th></tr></thead>
+      <tbody id="paymentsBody"></tbody>
+    </table></div>
+  </section>
+
+  <!-- Keys -->
+  <section id="tab-keys" class="hidden">
+    <div class="card" style="margin-bottom:18px">
+      <h3 style="margin-bottom:14px">Generate activation keys</h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="margin:0;flex:1;min-width:120px"><label for="kCount">How many</label><input id="kCount" type="number" value="5" min="1" max="200" /></div>
+        <div class="field" style="margin:0;flex:2;min-width:160px"><label for="kLabel">Label (optional)</label><input id="kLabel" type="text" placeholder="e.g. launch batch" /></div>
+        <button class="btn btn-primary" id="genKeys">Generate</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Key</th><th>Label</th><th>Status</th><th>Used at</th><th></th></tr></thead>
+      <tbody id="keysBody"></tbody>
+    </table></div>
+  </section>
+</div>
+</div>
+
+<script src="/assets/js/app.js?v=202608091040"></script>
+<script>
+const S = (id) => document.getElementById(id);
+let settings = null;
+
+// ── Gate ────────────────────────────────────────────────────────────────────
+async function initGate() {
+  const st = await API.get('/api/admin.php?action=status');
+  if (st.isAdmin) return showPanel();
+  S(st.claimed ? 'loginBox' : 'claimBox').classList.remove('hidden');
+}
+const gateErr = (m) => S('gateErr').innerHTML = m ? `<div class="alert alert-err">${esc(m)}</div>` : '';
+
+S('claimForm').addEventListener('submit', async (e) => {
+  e.preventDefault(); gateErr('');
+  try {
+    await API.post('/api/admin.php?action=claim', { username: S('cu').value.trim(), password: S('cp').value });
+    showPanel();
+  } catch (err) { gateErr(err.message); }
+});
+
+S('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault(); gateErr('');
+  try {
+    await API.post('/api/admin.php?action=login', { username: S('lu').value.trim(), password: S('lp').value });
+    showPanel();
+  } catch (err) { gateErr(err.message); }
+});
+
+S('adminLogout').addEventListener('click', async () => {
+  await API.post('/api/admin.php?action=logout', {});
+  location.reload();
+});
+
+async function showPanel() {
+  S('gate').classList.add('hidden');
+  S('panel').classList.remove('hidden');
+  await Promise.all([loadStats(), loadSettings(), loadUsers(), loadPayments(), loadKeys()]);
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach((t) => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
+    t.classList.add('active');
+    ['settings', 'users', 'payments', 'keys'].forEach((n) =>
+      S('tab-' + n).classList.toggle('hidden', n !== t.dataset.tab));
+  });
+});
+
+// ── Stats ───────────────────────────────────────────────────────────────────
+async function loadStats() {
+  const { stats } = await API.get('/api/admin.php?action=stats');
+  const cells = [
+    ['Users', stats.users], ['Credits held', stats.pointsInWallets],
+    ['Credits spent', stats.pointsSpent], ['USDT received', stats.usdtTotal],
+    ['Payments', stats.payments], ['Pending', stats.pendingPayments],
+  ];
+  S('stats').innerHTML = cells.map(([l, n]) =>
+    `<div class="stat"><div class="n">${esc(n)}</div><div class="l">${l}</div></div>`).join('');
+}
+
+// ── Settings ────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const r = await API.get('/api/admin.php?action=get_settings');
+  settings = r.settings;
+  S('apiKeyState').textContent = settings.decartApiKeySet ? '✓ A key is currently saved.' : '⚠ No key saved — live streams will fail.';
+  S('smtpPassState').textContent = settings.smtpPassSet ? '✓ A password is currently saved.' : '';
+  S('sOrigins').value = (settings.allowedOrigins || []).join('\n');
+  S('sBonus').value = settings.signupBonus;
+  S('sRate').value = settings.pointsPerUsdt;
+  S('sMin').value = settings.minUsdt;
+  S('sBsc').value = settings.bscAddress || '';
+  S('sTron').value = settings.tronAddress || '';
+  S('sHost').value = settings.smtpHost || '';
+  S('sPort').value = settings.smtpPort || 587;
+  S('sSecure').value = settings.smtpSecure || 'tls';
+  S('sUser').value = settings.smtpUser || '';
+  S('sFrom').value = settings.smtpFrom || '';
+  S('sNotify').value = settings.notifyAdminEmail || '';
+
+  renderPackages(settings.packages || []);
+
+  S('costsBox').innerHTML = Object.entries(settings.costs).map(([id, c]) => `
+    <div class="field">
+      <label>${esc(c.label || id)} <span class="faint">(${esc(c.type)})</span></label>
+      <input type="number" min="0" data-cost="${esc(id)}" value="${c.type === 'realtime' ? c.perSecond : c.flat}" />
+      <span class="hint">${c.type === 'realtime' ? 'credits per second' : 'credits per job'}</span>
+    </div>`).join('');
+}
+
+
+function renderPackages(pkgs) {
+  const host = S('pkgRows');
+  host.innerHTML = '';
+  pkgs.forEach((p, i) => host.appendChild(pkgRow(p, i)));
+  if (!pkgs.length) host.innerHTML = '<p class="hint">No packages — customers can still enter a custom amount.</p>';
+}
+
+function pkgRow(p, i) {
+  const row = document.createElement('div');
+  row.className = 'pkg-edit';
+  row.innerHTML =
+    `<input type="number" min="1" step="0.01" data-pk="usdt" value="${esc(p.usdt ?? '')}" placeholder="USDT" />` +
+    `<input type="number" min="0" max="100" data-pk="bonusPct" value="${esc(p.bonusPct ?? 0)}" placeholder="Bonus %" />` +
+    `<input type="text" data-pk="tag" value="${esc(p.tag ?? '')}" placeholder="Tag (optional)" />` +
+    `<button class="btn btn-danger btn-sm" type="button" data-rm="${i}">Remove</button>`;
+  row.querySelector('[data-rm]').addEventListener('click', () => {
+    row.remove();
+    if (!S('pkgRows').children.length) renderPackages([]);
+  });
+  return row;
+}
+
+S('addPkg').addEventListener('click', () => {
+  const host = S('pkgRows');
+  if (host.querySelector('.hint')) host.innerHTML = '';
+  host.appendChild(pkgRow({ usdt: '', bonusPct: 0, tag: '' }, host.children.length));
+});
+
+function collectPackages() {
+  return [...document.querySelectorAll('.pkg-edit')].map((row) => {
+    const get = (k) => row.querySelector(`[data-pk="${k}"]`).value;
+    return { usdt: parseFloat(get('usdt')) || 0, bonusPct: parseFloat(get('bonusPct')) || 0, tag: get('tag').trim() };
+  }).filter((p) => p.usdt > 0).sort((a, b) => a.usdt - b.usdt);
+}
+
+S('saveSettings').addEventListener('click', async () => {
+  const costs = JSON.parse(JSON.stringify(settings.costs));
+  document.querySelectorAll('[data-cost]').forEach((inp) => {
+    const id = inp.dataset.cost, v = parseInt(inp.value, 10) || 0;
+    if (costs[id].type === 'realtime') costs[id].perSecond = v; else costs[id].flat = v;
+  });
+  const payload = {
+    signupBonus: +S('sBonus').value, pointsPerUsdt: +S('sRate').value, minUsdt: +S('sMin').value,
+    bscAddress: S('sBsc').value.trim(), tronAddress: S('sTron').value.trim(),
+    allowedOrigins: S('sOrigins').value.split('\n').map((s) => s.trim()).filter(Boolean),
+    smtpHost: S('sHost').value.trim(), smtpPort: +S('sPort').value, smtpSecure: S('sSecure').value,
+    smtpUser: S('sUser').value.trim(), smtpFrom: S('sFrom').value.trim(),
+    notifyAdminEmail: S('sNotify').value.trim(), costs, packages: collectPackages(),
+  };
+  if (S('sApiKey').value.trim()) payload.decartApiKey = S('sApiKey').value.trim();
+  if (S('sPass').value) payload.smtpPass = S('sPass').value;
+  if (S('sAdminPass').value) payload.adminPassword = S('sAdminPass').value;
+
+  try {
+    await API.post('/api/admin.php?action=save_settings', { settings: payload });
+    S('sApiKey').value = ''; S('sPass').value = ''; S('sAdminPass').value = '';
+    toast('Settings saved');
+    loadSettings();
+  } catch (err) { toast(err.message, true); }
+});
+
+// ── Users ───────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  const { users } = await API.get('/api/admin.php?action=users');
+  S('usersBody').innerHTML = users.map((u) => `
+    <tr>
+      <td><b>${esc(u.name)}</b><div class="faint" style="font-size:.82rem">${esc(u.email)}</div></td>
+      <td class="mono">${u.points}</td>
+      <td class="faint">${esc((u.createdAt || '').slice(0, 10))}</td>
+      <td><span class="tag ${u.banned ? 'tag-bad' : 'tag-ok'}">${u.banned ? 'banned' : 'active'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" data-credit="${esc(u.id)}">+ Credits</button>
+        <button class="btn btn-ghost btn-sm" data-ban="${esc(u.id)}" data-banned="${u.banned ? 1 : 0}">${u.banned ? 'Unban' : 'Ban'}</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" class="faint">No users yet.</td></tr>';
+
+  document.querySelectorAll('[data-credit]').forEach((b) => b.addEventListener('click', async () => {
+    const amount = prompt('Add credits (use a negative number to remove):', '100');
+    if (amount === null) return;
+    const delta = parseInt(amount, 10);
+    if (!delta) return;
+    try { await API.post('/api/admin.php?action=adjust_points', { userId: b.dataset.credit, delta }); toast('Balance updated'); loadUsers(); loadStats(); }
+    catch (err) { toast(err.message, true); }
+  }));
+
+  document.querySelectorAll('[data-ban]').forEach((b) => b.addEventListener('click', async () => {
+    try { await API.post('/api/admin.php?action=ban_user', { userId: b.dataset.ban, banned: b.dataset.banned !== '1' }); loadUsers(); }
+    catch (err) { toast(err.message, true); }
+  }));
+}
+
+// ── Payments ────────────────────────────────────────────────────────────────
+async function loadPayments() {
+  const { payments } = await API.get('/api/payments.php?action=all');
+  S('paymentsBody').innerHTML = payments.map((p) => {
+    const cls = p.status === 'approved' ? 'tag-ok' : p.status === 'pending' ? 'tag-pend' : 'tag-bad';
+    return `<tr>
+      <td><b>${esc(p.userName)}</b><div class="faint" style="font-size:.82rem">${esc(p.userEmail)}</div></td>
+      <td class="mono">${esc(p.usdtVerified ?? p.usdtClaimed)} USDT${p.points ? `<div class="faint">+${p.points} cr</div>` : ''}</td>
+      <td>${esc(p.network.toUpperCase())}</td>
+      <td class="mono" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(p.txid)}</td>
+      <td><span class="tag ${cls}">${esc(p.status)}</span>${p.reason ? `<div class="faint" style="font-size:.75rem;margin-top:3px">${esc(p.reason)}</div>` : ''}</td>
+      <td style="white-space:nowrap">${p.status === 'pending'
+        ? `<button class="btn btn-ghost btn-sm" data-approve="${esc(p.id)}">Approve</button>
+           <button class="btn btn-danger btn-sm" data-reject="${esc(p.id)}">Reject</button>` : ''}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="faint">No payments yet.</td></tr>';
+
+  const act = async (id, approve) => {
+    try { await API.post('/api/payments.php?action=manual', { paymentId: id, approve }); toast(approve ? 'Approved' : 'Rejected'); loadPayments(); loadStats(); }
+    catch (err) { toast(err.message, true); }
+  };
+  document.querySelectorAll('[data-approve]').forEach((b) => b.addEventListener('click', () => act(b.dataset.approve, true)));
+  document.querySelectorAll('[data-reject]').forEach((b) => b.addEventListener('click', () => act(b.dataset.reject, false)));
+}
+
+// ── Keys ────────────────────────────────────────────────────────────────────
+async function loadKeys() {
+  const { keys } = await API.get('/api/activate.php?action=list');
+  S('keysBody').innerHTML = [...keys].reverse().map((k) => `
+    <tr>
+      <td class="mono"><b>${esc(k.key)}</b></td>
+      <td class="faint">${esc(k.label || '—')}</td>
+      <td><span class="tag ${k.used ? 'tag-pend' : 'tag-ok'}">${k.used ? 'used' : 'available'}</span></td>
+      <td class="faint">${esc(k.used_at || '—')}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" data-copy="${esc(k.key)}">Copy</button>
+        ${k.used ? `<button class="btn btn-ghost btn-sm" data-revoke="${esc(k.key)}">Revoke</button>` : ''}
+        <button class="btn btn-danger btn-sm" data-del="${esc(k.key)}">Delete</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" class="faint">No keys yet.</td></tr>';
+
+  document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => copyText(b.dataset.copy, 'Key copied')));
+  document.querySelectorAll('[data-revoke]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Revoke this key? The device using it will be deactivated.')) return;
+    await API.post('/api/activate.php?action=revoke', { key: b.dataset.revoke }); toast('Revoked'); loadKeys();
+  }));
+  document.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+    if (!confirm('Permanently delete this key?')) return;
+    await API.post('/api/activate.php?action=delete', { key: b.dataset.del }); toast('Deleted'); loadKeys();
+  }));
+}
+
+S('genKeys').addEventListener('click', async () => {
+  try {
+    const r = await API.post('/api/activate.php?action=generate', {
+      count: parseInt(S('kCount').value, 10) || 1, label: S('kLabel').value.trim(),
+    });
+    toast(`Generated ${r.keys.length} key(s)`);
+    loadKeys();
+  } catch (err) { toast(err.message, true); }
+});
+
+initGate();
+</script>
+</body>
+</html>

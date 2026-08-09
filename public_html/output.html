@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Output — OBS capture</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  video { width: 100vw; height: 100vh; object-fit: contain; background: #000; display: block; }
+  .hint {
+    position: fixed; inset: 0; display: grid; place-items: center; color: #667;
+    font-family: system-ui, sans-serif; font-size: 15px; text-align: center; padding: 24px;
+  }
+</style>
+</head>
+<body>
+<video id="v" autoplay playsinline muted></video>
+<div class="hint" id="hint">Waiting for the live AI feed…<br />Keep the Studio tab open and start a stream.</div>
+<script>
+  // Same-origin popup: read the live MediaStream straight off the opener.
+  const v = document.getElementById('v');
+  const hint = document.getElementById('hint');
+  setInterval(function attach() {
+    try {
+      const s = window.opener && window.opener.__eclipseStream;
+      if (s && v.srcObject !== s) { v.srcObject = s; hint.style.display = 'none'; }
+      if (!s) hint.style.display = 'grid';
+    } catch (e) { /* opener gone */ }
+  }, 500);
+</script>
+</body>
+</html>

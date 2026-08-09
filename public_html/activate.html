@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Activate desktop app — Eclipse Creator Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css?v=202608091040" />
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="brand" href="/" style="margin-bottom:22px"><span class="logo"></span> Eclipse</a>
+
+    <div id="formBox">
+      <h1>Activate your desktop app</h1>
+      <p class="sub">Enter the activation key you received. Each key works on one device.</p>
+      <div id="err"></div>
+      <form id="form">
+        <div class="field">
+          <label for="key">Activation key</label>
+          <input id="key" type="text" class="mono" placeholder="ECLPS-XXXXX-XXXXX-XXXXX"
+                 style="text-transform:uppercase;letter-spacing:.06em" required />
+        </div>
+        <button class="btn btn-primary btn-block" id="btn" type="submit">Activate this device</button>
+      </form>
+    </div>
+
+    <div id="doneBox" class="hidden center">
+      <div style="font-size:3rem;margin-bottom:10px">✓</div>
+      <h1>Device activated</h1>
+      <p class="sub">You're all set. This device token is saved locally — keep it safe.</p>
+      <div class="copy-box" style="margin-bottom:18px">
+        <span id="tokenOut" style="flex:1"></span>
+        <button class="btn btn-ghost btn-sm" id="copyTok" type="button">Copy</button>
+      </div>
+      <a class="btn btn-primary btn-block" href="/studio.html">Open the Studio →</a>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/app.js?v=202608091040"></script>
+<script>
+const S = (id) => document.getElementById(id);
+const STORE = 'eclipse_device_token';
+
+function showDone(token) {
+  S('formBox').classList.add('hidden');
+  S('doneBox').classList.remove('hidden');
+  S('tokenOut').textContent = token;
+}
+
+S('form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = S('btn');
+  btn.disabled = true; btn.textContent = 'Activating…';
+  S('err').innerHTML = '';
+  try {
+    const r = await API.post('/api/activate.php?action=validate', {
+      key: S('key').value.trim().toUpperCase(),
+      device_token: localStorage.getItem(STORE) || '',
+    });
+    localStorage.setItem(STORE, r.device_token);
+    showDone(r.device_token);
+  } catch (err) {
+    S('err').innerHTML = `<div class="alert alert-err">${esc(err.message)}</div>`;
+    btn.disabled = false; btn.textContent = 'Activate this device';
+  }
+});
+
+S('copyTok').addEventListener('click', () => copyText(S('tokenOut').textContent, 'Token copied'));
+
+// Already activated on this device? Skip straight to the confirmation.
+(async function () {
+  const t = localStorage.getItem(STORE);
+  if (!t) return;
+  try {
+    const r = await API.post('/api/activate.php?action=verify', { device_token: t });
+    if (r.ok) showDone(t);
+  } catch {}
+})();
+</script>
+</body>
+</html>

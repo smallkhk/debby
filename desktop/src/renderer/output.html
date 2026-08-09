@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI Output — capture this window in OBS</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  video { width: 100vw; height: 100vh; object-fit: contain; background: #000; display: block; }
+  .hint {
+    position: fixed; inset: 0; display: grid; place-items: center; color: #556;
+    font-family: "Segoe UI", system-ui, sans-serif; font-size: 15px; text-align: center; padding: 24px;
+  }
+  /* Deliberately no chrome: OBS captures exactly the pixels of the AI feed. */
+</style>
+</head>
+<body>
+<video id="v" autoplay playsinline muted></video>
+<div class="hint" id="hint">Waiting for the live feed…</div>
+<script>
+  const v = document.getElementById('v');
+  const hint = document.getElementById('hint');
+  // Same-origin child window: read the live MediaStream straight off the opener.
+  setInterval(function () {
+    try {
+      const s = window.opener && window.opener.__eclipseStream;
+      if (s && v.srcObject !== s) { v.srcObject = s; hint.style.display = 'none'; }
+      if (!s) hint.style.display = 'grid';
+    } catch (e) { /* opener gone */ }
+  }, 500);
+</script>
+</body>
+</html>

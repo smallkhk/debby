@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Eclipse Creator Studio — Real-time AI video in your browser</title>
+<meta name="description" content="Transform your camera in real time with AI. Live restyling, virtual try-on, Picture-in-Picture and OBS-ready output." />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/assets/css/app.css?v=202608091040" />
+</head>
+<body>
+<nav class="nav" id="nav"></nav>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="pill"><span class="dot"></span> Zero-latency AI video</span>
+    <h1>Transform your camera<br /><span class="grad-text">in real time</span>.</h1>
+    <p class="lead">
+      Restyle your webcam, try on outfits, and step into new worlds — live, in the browser.
+      Picture-in-Picture and OBS-ready, so you can stream anywhere.
+    </p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="/register.html">Start free →</a>
+      <a class="btn btn-ghost" href="#pricing">See pricing</a>
+    </div>
+    <p class="faint" style="margin-top:18px;font-size:.86rem">No card required · Free credits on signup</p>
+  </div>
+</header>
+
+<section class="section" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Everything you need</div>
+      <h2>A pro studio in a browser tab</h2>
+      <p>No installs, no drivers. Pick a camera and mic, choose a look, and you're live in seconds.</p>
+    </div>
+    <div class="grid grid-3">
+      <div class="card"><div class="ico">🎥</div><h3>Live restyle &amp; try-on</h3><p>Real-time video editing at 720p — restyle any feed or virtually try on outfits.</p></div>
+      <div class="card"><div class="ico">🖼️</div><h3>Picture-in-Picture</h3><p>Float the AI output over any app while you work, game, or present.</p></div>
+      <div class="card"><div class="ico">📡</div><h3>OBS-ready output</h3><p>A clean, chrome-free window built for OBS Window Capture — then anywhere via Virtual Camera.</p></div>
+      <div class="card"><div class="ico">🎙️</div><h3>Device selection</h3><p>Choose exactly which camera and microphone feed the stream. Multi-cam friendly.</p></div>
+      <div class="card"><div class="ico">⚡</div><h3>Prompt on the fly</h3><p>Change the style mid-stream — type a prompt or tap a preset and watch it shift.</p></div>
+      <div class="card"><div class="ico">⏱️</div><h3>Pay by the second</h3><p>Credits are metered per second of live AI. A live meter shows exactly what you're spending.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="how" style="background:var(--bg-elev)">
+  <div class="wrap">
+    <div class="section-head"><div class="eyebrow">How it works</div><h2>Three steps to a live AI feed</h2></div>
+    <div class="grid grid-3">
+      <div class="card"><div class="ico">1</div><h3>Pick your devices</h3><p>Select a camera, a microphone, and the model you want to run.</p></div>
+      <div class="card"><div class="ico">2</div><h3>Choose a look</h3><p>Type a prompt or tap a preset — anime, cyberpunk, claymation and more.</p></div>
+      <div class="card"><div class="ico">3</div><h3>Go live</h3><p>Pop into Picture-in-Picture or capture the output in OBS and stream anywhere.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Pricing</div>
+      <h2>Simple credits, no subscription</h2>
+      <p>Top up with USDT and spend credits only while the AI is actually running.</p>
+    </div>
+    <div class="grid grid-3" id="pricingGrid">
+      <div class="card center">
+        <div class="ico" style="margin:0 auto 14px">🎁</div>
+        <h3>Free to start</h3>
+        <p style="margin:10px 0 0">Every new account gets <b id="bonusPts" class="grad-text">free credits</b> to try the Studio — no card needed.</p>
+      </div>
+      <div class="card center">
+        <div class="ico" style="margin:0 auto 14px">💎</div>
+        <h3>Top up with USDT</h3>
+        <p style="margin:10px 0 0"><b id="rateTxt" class="grad-text">credits per USDT</b> on BNB Smart Chain or Tron. Verified on-chain automatically.</p>
+      </div>
+      <div class="card center">
+        <div class="ico" style="margin:0 auto 14px">⏱️</div>
+        <h3>Per-second billing</h3>
+        <p style="margin:10px 0 0">Live AI is billed by the second. Stop the stream and unused credits go straight back.</p>
+      </div>
+    </div>
+    <div class="center" style="margin-top:34px">
+      <a class="btn btn-primary" href="/register.html">Create your account →</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <a class="brand" href="/"><span class="logo"></span> Eclipse Creator Studio</a>
+    <div>Real-time video AI · <a href="/activate.html" style="color:var(--brand-2)">Activate desktop app</a></div>
+  </div>
+</footer>
+
+<script src="/assets/js/app.js?v=202608091040"></script>
+<script>
+  mountNav('');
+  // Pull live pricing so the landing page always matches the admin settings.
+  API.get('/api/payments.php?action=info').then(({ info }) => {
+    document.getElementById('rateTxt').textContent = info.pointsPerUsdt + ' credits per USDT';
+  }).catch(() => {});
+</script>
+</body>
+</html>
